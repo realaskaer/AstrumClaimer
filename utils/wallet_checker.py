@@ -7,11 +7,9 @@ from prettytable import PrettyTable
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
-
 from config import ACCOUNTS_DATA
 from utils.networks import EthereumRPC
 from modules import Client
-from dev import GeneralSettings
 from modules.interfaces import RequestClient
 
 
@@ -101,8 +99,6 @@ class TxChecker:
                 if counter > 10:
                     move_drop, move_l2_drop = 'ERROR', 'ERROR'
                     break
-
-        await client.session.close()
 
         full_data = {
             '#': index + 1,

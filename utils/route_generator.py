@@ -13,6 +13,8 @@ from dev import GeneralSettings, Settings
 AVAILABLE_MODULES_INFO = {
     # module_name                       : (module name, priority, tg info, can`t be shuffled, supported network)
     wrap_native                         : (wrap_native, 2, 'Wrap Native', 0, [0]),
+    binance_withdraw                    : (binance_withdraw, 2, 'Binance Withdraw', 0, [0]),
+    bridge_relay                        : (bridge_relay, 2, 'Bridge Relay', 0, [0]),
     movement_claim_on_l2                : (movement_claim_on_l2, 2, 'Claim $MOVE on L2 Mainnet', 0, [0]),
     movement_claim_on_ethereum          : (movement_claim_on_ethereum, 2, 'Claim $MOVE on Ethereum Mainnet', 0, [0]),
     movement_transfer_move              : (movement_transfer_move, 2, 'Transfer $MOVE on Ethereum Mainnet', 0, [0]),

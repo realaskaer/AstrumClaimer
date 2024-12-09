@@ -205,113 +205,109 @@ def helper(func):
         k = 0
 
         no_sleep_flag = False
-        try:
-            while attempts <= GeneralSettings.MAXIMUM_RETRY:
-                try:
-                    return await func(self, *args, **kwargs)
-                except Exception as error:
-                    attempts += 1
-                    k += 1
-                    msg = f'{error}'
-                    # traceback.print_exc()
+        while attempts <= GeneralSettings.MAXIMUM_RETRY:
+            try:
+                return await func(self, *args, **kwargs)
+            except Exception as error:
+                attempts += 1
+                k += 1
+                msg = f'{error}'
+                # traceback.print_exc()
 
-                    if isinstance(error, KeyError):
-                        msg = f"Parameter '{error}' for this module is not exist in software!"
-                        self.logger_msg(*self.client.acc_info, msg=msg, type_msg='error')
-                        return False
+                if isinstance(error, KeyError):
+                    msg = f"Parameter '{error}' for this module is not exist in software!"
+                    self.logger_msg(*self.client.acc_info, msg=msg, type_msg='error')
+                    return False
 
-                    elif any(keyword in str(error) for keyword in (
-                            'Bad Gateway', '403', 'SSL', 'Invalid proxy', 'rate limit', '429', '407', '503'
-                    )):
-                        self.logger_msg(*self.client.acc_info, msg=msg, type_msg='warning')
+                elif any(keyword in str(error) for keyword in (
+                        'Bad Gateway', '403', 'SSL', 'Invalid proxy', 'rate limit', '429', '407', '503'
+                )):
+                    self.logger_msg(*self.client.acc_info, msg=msg, type_msg='warning')
+                    await self.client.change_proxy()
+                    continue
+
+                elif 'Error code' in str(error):
+                    msg = f'{error}. Will try again...'
+
+                elif 'Server disconnected' in str(error):
+                    msg = f'{error}. Will try again...'
+
+                elif 'StatusCode.UNAVAILABLE' in str(error):
+                    msg = f'RPC got autism response, will try again......'
+
+                elif '<html lang="en">' in str(error):
+                    msg = f'Proxy got non-permanent ban, will try again...'
+
+                elif 'insufficient funds' in str(error):
+                    msg = f'Insufficient funds to complete transaction'
+
+                elif 'gas required exceeds' in str(error):
+                    msg = f'Not enough {self.client.network.token} for transaction gas payment'
+
+                elif isinstance(error, ContractLogicError):
+                    msg = f"Contract reverted: {error}"
+
+                elif isinstance(error, SoftwareExceptionHandled):
+                    self.logger_msg(*self.client.acc_info, msg=f"{error}", type_msg='warning')
+                    return True
+
+                elif isinstance(error, FaucetException):
+                    if not GeneralSettings.BREAK_FAUCET:
+                        self.logger_msg(*self.client.acc_info, msg=f"{error}", type_msg='warning')
                         await self.client.change_proxy()
                         continue
-
-                    elif 'Error code' in str(error):
-                        msg = f'{error}. Will try again...'
-
-                    elif 'Server disconnected' in str(error):
-                        msg = f'{error}. Will try again...'
-
-                    elif 'StatusCode.UNAVAILABLE' in str(error):
-                        msg = f'RPC got autism response, will try again......'
-
-                    elif '<html lang="en">' in str(error):
-                        msg = f'Proxy got non-permanent ban, will try again...'
-
-                    elif 'insufficient funds' in str(error):
-                        msg = f'Insufficient funds to complete transaction'
-
-                    elif 'gas required exceeds' in str(error):
-                        msg = f'Not enough {self.client.network.token} for transaction gas payment'
-
-                    elif isinstance(error, ContractLogicError):
-                        msg = f"Contract reverted: {error}"
-
-                    elif isinstance(error, SoftwareExceptionHandled):
+                    else:
                         self.logger_msg(*self.client.acc_info, msg=f"{error}", type_msg='warning')
-                        return True
+                        raise SoftwareException(f"{error}")
 
-                    elif isinstance(error, FaucetException):
-                        if not GeneralSettings.BREAK_FAUCET:
-                            self.logger_msg(*self.client.acc_info, msg=f"{error}", type_msg='warning')
-                            await self.client.change_proxy()
-                            continue
-                        else:
-                            self.logger_msg(*self.client.acc_info, msg=f"{error}", type_msg='warning')
-                            raise SoftwareException(f"{error}")
+                elif isinstance(error, (SoftwareExceptionWithoutRetry, BlockchainExceptionWithoutRetry)):
+                    self.logger_msg(self.client.account_name, None, msg=msg, type_msg='error')
+                    return False
 
-                    elif isinstance(error, (SoftwareExceptionWithoutRetry, BlockchainExceptionWithoutRetry)):
-                        self.logger_msg(self.client.account_name, None, msg=msg, type_msg='error')
-                        return False
+                elif isinstance(error, (SoftwareException, BlockchainException)):
+                    msg = f'{error}'
 
-                    elif isinstance(error, (SoftwareException, BlockchainException)):
-                        msg = f'{error}'
-
-                    elif isinstance(error, (ClientError, asyncio.TimeoutError, ProxyError, ReplyError)):
-                        self.logger_msg(
-                            *self.client.acc_info,
-                            msg=f"Connection to RPC is not stable. Will try again in 10 seconds...",
-                            type_msg='warning'
-                        )
-                        await asyncio.sleep(10)
-                        self.logger_msg(*self.client.acc_info, msg=msg, type_msg='warning')
-
-                        if k % 2 == 0:
-                            if int(k / 2) < GeneralSettings.PROXY_REPLACEMENT_COUNT:
-                                await self.client.change_proxy()
-                                await self.client.change_rpc()
-                            else:
-                                raise SoftwareException(
-                                    f'Account can not find a good proxy {GeneralSettings.PROXY_REPLACEMENT_COUNT} times'
-                                )
-                        attempts -= 1
-
-                        continue
-
-                    else:
-                        msg = f'Unknown Error: {error}'
-                        traceback.print_exc()
-
+                elif isinstance(error, (ClientError, asyncio.TimeoutError, ProxyError, ReplyError)):
                     self.logger_msg(
-                        self.client.account_name,
-                        None,
-                        msg=f"{msg} | Try[{attempts}/{GeneralSettings.MAXIMUM_RETRY + 1}]",
-                        type_msg='error'
+                        *self.client.acc_info,
+                        msg=f"Connection to RPC is not stable. Will try again in 10 seconds...",
+                        type_msg='warning'
                     )
+                    await asyncio.sleep(10)
+                    self.logger_msg(*self.client.acc_info, msg=msg, type_msg='warning')
 
-                    if attempts > GeneralSettings.MAXIMUM_RETRY:
-                        self.logger_msg(
-                            self.client.account_name, None,
-                            msg=f"Tries are over, software will stop module\n", type_msg='error'
-                        )
-                        break
-                    else:
-                        if not no_sleep_flag:
-                            await sleep(self, *GeneralSettings.SLEEP_TIME_RETRY)
+                    if k % 2 == 0:
+                        if int(k / 2) < GeneralSettings.PROXY_REPLACEMENT_COUNT:
+                            await self.client.change_proxy()
+                            await self.client.change_rpc()
+                        else:
+                            raise SoftwareException(
+                                f'Account can not find a good proxy {GeneralSettings.PROXY_REPLACEMENT_COUNT} times'
+                            )
+                    attempts -= 1
 
-        finally:
-            await self.client.session.close()
+                    continue
+
+                else:
+                    msg = f'Unknown Error: {error}'
+                    traceback.print_exc()
+
+                self.logger_msg(
+                    self.client.account_name,
+                    None,
+                    msg=f"{msg} | Try[{attempts}/{GeneralSettings.MAXIMUM_RETRY + 1}]",
+                    type_msg='error'
+                )
+
+                if attempts > GeneralSettings.MAXIMUM_RETRY:
+                    self.logger_msg(
+                        self.client.account_name, None,
+                        msg=f"Tries are over, software will stop module\n", type_msg='error'
+                    )
+                    break
+                else:
+                    if not no_sleep_flag:
+                        await sleep(self, *GeneralSettings.SLEEP_TIME_RETRY)
         return False
     return wrapper
 

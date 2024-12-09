@@ -1,5 +1,5 @@
-import importlib.util
 import os
+import importlib.util
 
 
 class GeneralSettings:
@@ -27,6 +27,8 @@ class GeneralSettings:
         general_settings = GeneralSettings.get_general_settings()
         GeneralSettings.load_general_settings(general_settings)
 
+    BINANCE_API_KEY = None
+    BINANCE_API_SECRET = None
     SOFTWARE_MODE = None
     ACCOUNTS_IN_STREAM = None
     WALLETS_TO_WORK = None

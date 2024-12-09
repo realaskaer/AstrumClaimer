@@ -9,7 +9,7 @@ from eth_typing import HexStr
 from web3.contract import AsyncContract
 from web3.exceptions import TransactionNotFound
 from modules import Logger, RequestClient
-from config import TOKENS_PER_CHAIN, ACCOUNTS_DATA
+from config import TOKENS_PER_CHAIN, ACCOUNTS_DATA, CHAIN_IDS
 from config import ERC20_ABI
 from web3 import AsyncHTTPProvider, AsyncWeb3
 from dev import GeneralSettings, Settings
@@ -31,13 +31,8 @@ class Client(Logger, RequestClient):
         self.chain_id = network.chain_id
 
         self.proxy_init = proxy
-        self.session = ClientSession(
-            connector=ProxyConnector.from_url(f"http://{proxy}", verify_ssl=False)
-            if proxy else TCPConnector(verify_ssl=False)
-        )
-        self.session.headers.update({
-            'User-Agent': self.get_user_agent()
-        })
+        self.proxy_url = f"http://{proxy}"
+
         self.request_kwargs = {"proxy": f"http://{proxy}", "verify_ssl": False} if proxy else {"verify_ssl": False}
         self.rpc = random.choice(network.rpc)
         self.w3 = AsyncWeb3(AsyncHTTPProvider(self.rpc, request_kwargs=self.request_kwargs))
@@ -124,21 +119,13 @@ class Client(Logger, RequestClient):
                 if new_proxy != self.proxy_init:
                     break
 
-            await self.session.close()
             self.proxy_init = new_proxy
-            self.session = ClientSession(
-                connector=ProxyConnector.from_url(f"http://{new_proxy}", verify_ssl=False)
-                if new_proxy else TCPConnector(verify_ssl=False)
-            )
+
             self.request_kwargs = {
                 "proxy": f"http://{new_proxy}", "verify_ssl": False
             } if new_proxy else {"verify_ssl": False}
 
             self.w3 = AsyncWeb3(AsyncHTTPProvider(self.rpc, request_kwargs=self.request_kwargs))
-
-            self.session.headers.update({
-                'User-Agent': self.get_user_agent()
-            })
 
             if not without_logs:
                 self.logger_msg(
@@ -192,7 +179,7 @@ class Client(Logger, RequestClient):
         gas_price = await self.w3.eth.gas_price
 
         return float((await self.w3.eth.estimate_gas(
-            transaction)) * GeneralSettings.GAS_LIMIT_MULTIPLIER * gas_price / 10 ** 18 * 1.2)
+            transaction)) * GeneralSettings.GAS_LIMIT_MULTIPLIER * gas_price / 10 ** 18)
 
     async def get_decimals(self, token_name: str = None, token_address: str = None) -> int:
         if token_name != self.token:
@@ -204,6 +191,28 @@ class Client(Logger, RequestClient):
     async def get_normalize_amount(self, token_name: str, amount_in_wei: int) -> float:
         decimals = await self.get_decimals(token_name)
         return float(amount_in_wei / 10 ** decimals)
+
+    async def get_bridge_data(self, chain_from_name: int, dapp_id: int, settings_id: int):
+        bridge_config = {
+            1: CHAIN_IDS,
+            2: CHAIN_IDS,
+            3: CHAIN_IDS,
+        }[dapp_id]
+
+        chain_to_names, bridge_setting, bridge_token = {
+            # 1: (Settings.ACROSS_CHAIN_TO_NAMES, Settings.ACROSS_BRIDGE_AMOUNT, Settings.ACROSS_TOKEN_NAME),
+            # 2: (Settings.BUNGEE_CHAIN_TO_NAMES, Settings.BUNGEE_BRIDGE_AMOUNT, Settings.BUNGEE_TOKEN_NAME),
+            3: (Settings.RELAY_CHAIN_TO_NAMES, Settings.RELAY_BRIDGE_AMOUNT, Settings.RELAY_TOKEN_NAME),
+        }[settings_id]
+
+        bridge_cfg_from_name = bridge_config[chain_from_name]
+        chain_to_name = random.choice([chain for chain in chain_to_names if chain != chain_from_name])
+        bridge_cfg_to_name = bridge_config[chain_to_name]
+        if isinstance(bridge_token, tuple):
+            bridge_token = bridge_token[0]
+
+        _, amount = await self.get_smart_amount(bridge_setting, token_name=bridge_token)
+        return bridge_cfg_from_name, bridge_cfg_to_name, amount, chain_to_name
 
     async def get_smart_amount(
             self, settings: tuple, need_percent: bool = False, token_name: str = None, fee_support: float = None,
@@ -237,7 +246,7 @@ class Client(Logger, RequestClient):
         text_encoded = encode_defunct(hexstr=text_hex)
         return self.w3.to_hex(self.w3.eth.account.sign_message(text_encoded, private_key=self.private_key).signature)
 
-    async def new_client(self, chain_name: str):
+    def new_client(self, chain_name: str):
         from functions import get_rpc_by_chain_name
 
         self.module_input_data['network'] = get_rpc_by_chain_name(chain_name)
@@ -249,55 +258,51 @@ class Client(Logger, RequestClient):
             token_address: str = None, sleep_time: int = 60,
             check_balance_on_dst: bool = False
     ) -> bool | tuple:
-        client = await self.new_client(chain_to_name)
+        client = self.new_client(chain_to_name)
 
         if not token_name:
             token_name = self.token
-        try:
-            while True:
-                try:
-                    if check_balance_on_dst:
-                        old_balance_in_wei, old_balance, _ = await client.get_token_balance(
-                            token_name, token_address, check_symbol=False
-                        )
-
-                        return old_balance_in_wei, old_balance
-
-                    old_balance_in_wei, old_balance = old_balance_data
-
-                    client.logger_msg(*client.acc_info, msg=f'Waiting {token_name} to receive')
-
-                    while True:
-                        new_balance_in_wei, new_balance, _ = await client.get_token_balance(
-                            token_name, token_address, check_symbol=False
-                        )
-
-                        if new_balance_in_wei > old_balance_in_wei:
-                            received_amount = client.custom_round(new_balance - old_balance)
-                            client.logger_msg(
-                                *client.acc_info,
-                                msg=f'{received_amount} {token_name} was received on {client.network.name}',
-                                type_msg='success'
-                            )
-                            return True
-                        else:
-                            client.logger_msg(
-                                *client.acc_info, msg=f'Still waiting {token_name} to receive...', type_msg='warning'
-                            )
-                            await asyncio.sleep(sleep_time)
-
-                except Exception as error:
-                    import traceback
-                    traceback.print_exc()
-                    self.logger_msg(
-                        *self.acc_info, msg=f'Bad response from RPC, will try again in 1 min. Error: {error}',
-                        type_msg='warning'
+        while True:
+            try:
+                if check_balance_on_dst:
+                    old_balance_in_wei, old_balance, _ = await client.get_token_balance(
+                        token_name, token_address, check_symbol=False
                     )
-                    await asyncio.sleep(60)
-                    await client.change_rpc()
-        finally:
-            if not client.session.closed:
-                await client.session.close()
+
+                    return old_balance_in_wei, old_balance
+
+                old_balance_in_wei, old_balance = old_balance_data
+
+                client.logger_msg(*client.acc_info, msg=f'Waiting {token_name} to receive')
+
+                while True:
+                    new_balance_in_wei, new_balance, _ = await client.get_token_balance(
+                        token_name, token_address, check_symbol=False
+                    )
+
+                    if new_balance_in_wei > old_balance_in_wei:
+                        received_amount = client.custom_round(new_balance - old_balance)
+                        client.logger_msg(
+                            *client.acc_info,
+                            msg=f'{received_amount} {token_name} was received on {client.network.name}',
+                            type_msg='success'
+                        )
+                        return True
+                    else:
+                        client.logger_msg(
+                            *client.acc_info, msg=f'Still waiting {token_name} to receive...', type_msg='warning'
+                        )
+                        await asyncio.sleep(sleep_time)
+
+            except Exception as error:
+                import traceback
+                traceback.print_exc()
+                self.logger_msg(
+                    *self.acc_info, msg=f'Bad response from RPC, will try again in 1 min. Error: {error}',
+                    type_msg='warning'
+                )
+                await asyncio.sleep(60)
+                await client.change_rpc()
 
     @network_handler
     async def get_token_balance(

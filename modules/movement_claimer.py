@@ -37,16 +37,16 @@ class MovementClaimer(Logger, RequestClient):
             abi=MOVEMENT_ABI['claimer']
         )
 
-    async def get_nonce(self):
-        if not self.nonce:
+    async def get_nonce(self, first_try):
+        if not self.nonce or first_try:
             url = 'https://claims.movementnetwork.xyz/api/get-nonce'
 
             response = await self.make_request(url=url, headers=self.headers)
 
             self.nonce = response['nonce']
 
-    async def get_drop_status(self):
-        await self.get_nonce()
+    async def get_drop_status(self, first_try: bool = False):
+        await self.get_nonce(first_try)
 
         url = 'https://claims.movementnetwork.xyz/api/claim/start'
 
@@ -83,6 +83,13 @@ class MovementClaimer(Logger, RequestClient):
                     type_msg='success'
                 )
                 return False
+            elif response['eligibility_status'] == 'claimed':
+                move_drop = response['amount']
+                self.client.logger_msg(
+                    *self.client.acc_info, msg=f'You are already claimed {move_drop} $MOVE on Ethereum',
+                    type_msg='success'
+                )
+                return False
         else:
             raise SoftwareExceptionWithoutRetry(f'You are not eligible to claim $MOVE')
 
@@ -92,7 +99,7 @@ class MovementClaimer(Logger, RequestClient):
 
         url = 'https://claims.movementnetwork.xyz/api/claim/l2'
 
-        claim_status = await self.get_drop_status()
+        claim_status = await self.get_drop_status(first_try=True)
 
         if not claim_status:
             return True
@@ -165,12 +172,22 @@ class MovementClaimer(Logger, RequestClient):
             amount_to_claim
         ).call()
 
-        transaction = await self.claim_contract.functions.claim(
-            claim_data['proof'],
-            abi.encode(['int'], [0]),
-            claim_data['data'],
-            abi.encode(['int', 'int'], [1, 1])
-        ).build_transaction(await self.client.prepare_transaction(value=claim_fee))
+        try:
+            transaction = await self.claim_contract.functions.claim(
+                claim_data['proof'],
+                abi.encode(['int'], [0]),
+                claim_data['data'],
+                abi.encode(['int', 'int'], [1, 1])
+            ).build_transaction(await self.client.prepare_transaction(value=claim_fee))
+        except Exception as error:
+            if '0x0e4b0ab2' in str(error):
+                self.client.logger_msg(
+                    *self.client.acc_info, msg=f'You are already claimed $MOVE on Ethereum',
+                    type_msg='success'
+                )
+                return True
+            else:
+                raise error
 
         return await self.client.send_transaction(transaction)
 
@@ -197,10 +214,16 @@ class MovementClaimer(Logger, RequestClient):
 
         token_contract = self.client.get_contract("0x3073f7aAA4DB83f95e9FFf17424F71D4751a3073")
 
-        transaction = await token_contract.functions.transfer(
-            self.client.w3.to_checksum_address(transfer_address),
-            balance_in_wei
-        ).build_transaction(await self.client.prepare_transaction())
+        try:
+            transaction = await token_contract.functions.transfer(
+                self.client.w3.to_checksum_address(transfer_address),
+                balance_in_wei
+            ).build_transaction(await self.client.prepare_transaction())
+        except Exception as error:
+            if 'no data' in str(error):
+                raise SoftwareException('Not enough ETH for cover gas fee')
+            else:
+                raise error
 
         self.logger_msg(*self.client.acc_info, msg=f"Transfer {balance} MOVE to {transfer_address} address")
 
