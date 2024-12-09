@@ -203,7 +203,7 @@ def network_handler(func):
                     return False
 
                 elif any(keyword in str(error) for keyword in (
-                        'Bad Gateway', '403', 'SSL', 'Invalid proxy', 'rate limit', '429', '407', '503'
+                        'Bad Gateway', '403', 'SSL', 'Invalid proxy', 'rate limit', '429', '407', '503', "417"
                 )):
                     self.logger_msg(*client_info, msg=msg, type_msg='warning')
                     if client_object:
