@@ -35,7 +35,7 @@ class RouteGenerator(Logger):
     def classic_generate_route():
         route = []
         copy_full_route = copy.deepcopy(Settings.CLASSIC_ROUTES_MODULES_USING)
-        rpc = 'BeraChain'
+        rpc = 'Ethereum'
         flag = any(isinstance(sub_route, tuple) for sub_route in copy_full_route)
 
         if flag:
@@ -89,7 +89,7 @@ class RouteGenerator(Logger):
                         route.append(f"{module.__name__}:{rpc}")
                     else:
                         raise SoftwareException(f'Нет модуля с именем "{module_name}" в софте.')
-            rpc = "BeraChain"
+            rpc = "Ethereum"
 
         return route
 

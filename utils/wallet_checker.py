@@ -40,11 +40,7 @@ class TxChecker:
         else:
             raise SoftwareException(f"Can`t get nonce, response: {await response.text()}")
 
-    async def get_drop_amount(self, account_name, index, client):
-        account_address = client.address
-
-        url = 'https://claims.movementnetwork.xyz/api/get-nonce'
-
+    async def get_drop_amount(self, client):
         headers = {
             'accept': '*/*',
             'accept-language': 'ru,en-US;q=0.9,en;q=0.8,ru-RU;q=0.7',
@@ -104,7 +100,7 @@ class TxChecker:
         account_name = account_data['account_name']
         account_address = client.address
 
-        move_drop, move_l2_drop = await self.get_drop_amount(account_name, index, client)
+        move_drop, move_l2_drop = await self.get_drop_amount(client)
 
         await client.session.close()
 
