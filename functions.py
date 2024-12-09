@@ -27,6 +27,17 @@ def get_rpc_by_chain_name(chain_name):
     }[chain_name]
 
 
+async def movement_claim_on_l2(module_input_data):
+    worker = MovementClaimer(get_client(module_input_data))
+    return await worker.claim_on_l2()
+
+
+async def movement_claim_on_ethereum(module_input_data):
+    module_input_data['network'] = EthereumRPC
+    worker = MovementClaimer(get_client(module_input_data))
+    return await worker.claim_on_ethereum()
+
+
 async def wrap_native(module_input_data):
     worker = Custom(get_client(module_input_data))
     return await worker.wrap_native()

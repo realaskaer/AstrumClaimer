@@ -97,7 +97,7 @@ def main():
                 choices=[
                     # Choice("🚀 Start running routes for each wallet", 'classic_routes_run'),
                     # Choice("📄 Generate route for each wallet", 'classic_routes_gen'),
-                    # Choice("📂 Go to saved routes", 'get_presets'),
+                    Choice("📂 Open presets", 'get_presets'),
                     Choice("💰 Check Movement Drop", 'check_movement_drop'),
                     Choice("✅ Check the connection of each proxy", 'check_proxy'),
                     Choice('❌ Exit', "exit")

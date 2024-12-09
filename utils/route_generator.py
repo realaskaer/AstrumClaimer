@@ -13,6 +13,8 @@ from dev import GeneralSettings, Settings
 AVAILABLE_MODULES_INFO = {
     # module_name                       : (module name, priority, tg info, can`t be shuffled, supported network)
     wrap_native                         : (wrap_native, 2, 'Wrap Native', 0, [0]),
+    movement_claim_on_l2                : (movement_claim_on_l2, 2, 'Claim $MOVE on L2 Mainnet', 0, [0]),
+    movement_claim_on_ethereum          : (movement_claim_on_ethereum, 2, 'Claim $MOVE on Ethereum Mainnet', 0, [0]),
     unwrap_native                       : (unwrap_native, 2, 'Unwrap Native', 0, [0]),
     transfer_eth                        : (transfer_eth, 3, 'Transfer $ETH', 0, [0]),
 }

@@ -14,6 +14,8 @@ from termcolor import cprint
 from web3 import AsyncWeb3, AsyncHTTPProvider
 from msoffcrypto.exceptions import DecryptionError, InvalidKeyError
 from python_socks import ProxyError
+from web3.exceptions import ContractLogicError
+
 from utils.networks import EthereumRPC
 from dev import GeneralSettings, Settings
 
@@ -283,6 +285,15 @@ def helper(func):
                     elif '<html lang="en">' in str(error):
                         msg = f'Proxy got non-permanent ban, will try again...'
 
+                    elif 'insufficient funds' in str(error):
+                        msg = f'Insufficient funds to complete transaction'
+
+                    elif 'gas required exceeds' in str(error):
+                        msg = f'Not enough {self.client.network.token} for transaction gas payment'
+
+                    elif isinstance(error, ContractLogicError):
+                        msg = f"Contract reverted: {error}"
+
                     elif isinstance(error, SoftwareExceptionHandled):
                         self.logger_msg(*self.client.acc_info, msg=f"{error}", type_msg='warning')
                         return True
@@ -300,16 +311,8 @@ def helper(func):
                         self.logger_msg(self.client.account_name, None, msg=msg, type_msg='error')
                         return False
 
-                    elif isinstance(error, SoftwareException):
+                    elif isinstance(error, (SoftwareException, BlockchainException)):
                         msg = f'{error}'
-
-                    elif isinstance(error, BlockchainException):
-                        if 'insufficient funds' not in str(error):
-                            self.logger_msg(
-                                self.client.account_name,
-                                None, msg=f'Maybe problem with node: {self.client.rpc}', type_msg='warning'
-                            )
-                            await self.client.change_rpc()
 
                     elif isinstance(error, (ClientError, asyncio.TimeoutError, ProxyError, ReplyError)):
                         self.logger_msg(
