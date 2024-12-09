@@ -200,10 +200,10 @@ class TxChecker:
                 if field in ['#', 'Account Name', 'Address']:
                     colored_row_data.append(colored(row[field], 'light_green'))
                 elif field in ['MOVE']:
-                    total_move += float(row[field])
+                    total_move += float(row[field] if row[field] != 'ERROR' else 0)
                     colored_row_data.append(colored(row[field], 'light_magenta'))
                 elif field in ['MOVE_L2']:
-                    total_move_l2 += float(row[field])
+                    total_move_l2 += float(row[field] if row[field] != 'ERROR' else 0)
                     colored_row_data.append(colored(row[field], 'light_magenta'))
                 else:
                     colored_row_data.append(colored(row[field], 'light_cyan'))
