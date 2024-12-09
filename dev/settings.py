@@ -53,6 +53,7 @@ class Settings:
         Settings.load_settings(settings)
 
     WANTED_DELEGATOR_ADDRESS = None
+    MOVEMENT_CLAIM_AT_AMOUNT = None
     TOTAL_DECIMALS = None
     TRANSFER_ETH_AMOUNT = None
     CLASSIC_ROUTES_BLOCKS_COUNT = None

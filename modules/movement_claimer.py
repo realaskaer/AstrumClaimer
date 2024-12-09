@@ -4,6 +4,7 @@ from config import MOVEMENT_ABI
 from utils.tools import helper, gas_checker
 from .interfaces import Logger, RequestClient, SoftwareException, SoftwareExceptionWithoutRetry
 from .client import Client
+from dev import Settings
 
 
 class MovementClaimer(Logger, RequestClient):
@@ -68,6 +69,12 @@ class MovementClaimer(Logger, RequestClient):
                     *self.client.acc_info, msg=f'You are eligible to claim $MOVE: Now: {move_drop}, L2: {move_l2_drop}',
                     type_msg='success'
                 )
+
+                if move_drop < Settings.MOVEMENT_CLAIM_AT_AMOUNT:
+                    raise SoftwareExceptionWithoutRetry(
+                        f"You set MOVEMENT_CLAIM_AT_AMOUNT = {Settings.MOVEMENT_CLAIM_AT_AMOUNT}, so will skip this account"
+                    )
+
                 return move_drop, move_l2_drop
             elif response['eligibility_status'] == 'claimed_l2':
                 move_l2_drop = response['amountL2']
@@ -164,5 +171,37 @@ class MovementClaimer(Logger, RequestClient):
             claim_data['data'],
             abi.encode(['int', 'int'], [1, 1])
         ).build_transaction(await self.client.prepare_transaction(value=claim_fee))
+
+        return await self.client.send_transaction(transaction)
+
+    def get_wallet_for_transfer(self):
+        from config import ACCOUNTS_DATA
+
+        cex_address = ACCOUNTS_DATA['accounts'][self.client.account_name].get('evm_deposit_address')
+
+        if not cex_address:
+            raise SoftwareExceptionWithoutRetry(f'There is no wallet listed for transfer, please add wallet into accounts_data.xlsx')
+
+        return cex_address
+
+    @helper
+    @gas_checker
+    async def transfer_move(self):
+        self.logger_msg(*self.client.acc_info, msg=f'Initiate transfer')
+
+        transfer_address = self.get_wallet_for_transfer()
+
+        balance_in_wei, balance, _ = await self.client.get_token_balance(
+            token_name="MOVE", token_address="0x3073f7aAA4DB83f95e9FFf17424F71D4751a3073"
+        )
+
+        token_contract = self.client.get_contract("0x3073f7aAA4DB83f95e9FFf17424F71D4751a3073")
+
+        transaction = await token_contract.functions.transfer(
+            self.client.w3.to_checksum_address(transfer_address),
+            balance_in_wei
+        ).build_transaction(await self.client.prepare_transaction())
+
+        self.logger_msg(*self.client.acc_info, msg=f"Transfer {balance} MOVE to {transfer_address} address")
 
         return await self.client.send_transaction(transaction)

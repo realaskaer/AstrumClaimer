@@ -8,7 +8,7 @@ from modules.interfaces import SoftwareException
 from utils.modules_runner import Runner
 from utils.route_generator import RouteGenerator
 from utils.wallet_checker import TxChecker
-from utils.tools import progress_file_is_not_empty, create_transfer_list
+from utils.tools import progress_file_is_not_empty
 from dev import Settings
 from version import VERSION
 
@@ -122,10 +122,6 @@ def main():
                     Settings.prepare_settings()
                     generator = RouteGenerator()
                     are_you_sure(generator.classic_routes_json_save, gen_route=True)
-                case 'create_transfer_list':
-                    print()
-                    create_transfer_list()
-                    print()
                 case 'check_movement_drop':
                     print()
                     tx_checker = TxChecker()

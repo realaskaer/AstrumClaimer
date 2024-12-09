@@ -1,7 +1,5 @@
 import os
 import asyncio
-import traceback
-
 import pandas as pd
 
 from termcolor import cprint, colored
@@ -9,12 +7,12 @@ from prettytable import PrettyTable
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
+
+from config import ACCOUNTS_DATA
 from utils.networks import EthereumRPC
 from modules import Client
 from dev import GeneralSettings
-from config import ACCOUNT_NAMES, PRIVATE_KEYS, PROXIES
 from modules.interfaces import RequestClient
-
 
 
 class TxChecker:
@@ -125,17 +123,12 @@ class TxChecker:
         table.field_names = [colored(field) for field in fields]
 
         accounts_data = []
-        for account in zip(ACCOUNT_NAMES, PRIVATE_KEYS, PROXIES):
-            if GeneralSettings.USE_PROXY:
-                proxy = account[2]
-            else:
-                proxy = False
-
+        for account_name, account_data in ACCOUNTS_DATA['accounts'].items():
             account_data = {
-                'account_name': account[0],
-                'evm_private_key': account[1],
+                'account_name': account_name,
+                'evm_private_key': account_data['evm_private_key'],
                 'network': EthereumRPC,
-                'proxy': proxy,
+                'proxy': account_data['proxy'],
             }
             accounts_data.append(account_data)
 

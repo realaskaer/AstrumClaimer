@@ -28,7 +28,7 @@ WALLETS_TO_WORK = 0             # 0 / 3 / 3, 20 / [[3, 20]]
 WALLETS_TO_EXCLUDE = 0          # 0 / 3 / 3, 20 / [[3, 20]]
 SHUFFLE_WALLETS = False         # Перемешивает кошельки перед запуском
 
-BREAK_ROUTE = False             # Прекращает выполнение маршрута, если произойдет ошибка
+BREAK_ROUTE = True              # Прекращает выполнение маршрута, если произойдет ошибка
 SAVE_PROGRESS = True            # Включает сохранение прогресса аккаунта для Classic-routes
 TELEGRAM_NOTIFICATIONS = False  # Включает уведомления в Telegram
 

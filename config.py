@@ -278,7 +278,7 @@ IMAP_CONFIG = {
 }
 
 GeneralSettings.prepare_general_settings()
-ACCOUNT_NAMES, PRIVATE_KEYS, PROXIES, TRANSFERS_ADDRESSES = get_accounts_data()
+ACCOUNTS_DATA = get_accounts_data()
 
 
 TITLE = """

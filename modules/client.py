@@ -9,7 +9,7 @@ from eth_typing import HexStr
 from web3.contract import AsyncContract
 from web3.exceptions import TransactionNotFound
 from modules import Logger, RequestClient
-from config import TOKENS_PER_CHAIN
+from config import TOKENS_PER_CHAIN, ACCOUNTS_DATA
 from config import ERC20_ABI
 from web3 import AsyncHTTPProvider, AsyncWeb3
 from dev import GeneralSettings, Settings
@@ -110,16 +110,17 @@ class Client(Logger, RequestClient):
                 )
 
     async def change_proxy(self, without_logs: bool = False):
-        from config import PROXIES
         if not without_logs:
             self.logger_msg(
                 self.account_name,
                 None, msg=f'Trying to replace old proxy: {self.proxy_init}', type_msg='warning'
             )
 
-        if len(set(PROXIES)) > 1:
+        proxies = [account['proxy'] for account in ACCOUNTS_DATA['accounts'].values() if account['proxy']]
+
+        if len(set(proxies)) > 1:
             while True:
-                new_proxy = random.choice(PROXIES)
+                new_proxy = random.choice(proxies)
                 if new_proxy != self.proxy_init:
                     break
 

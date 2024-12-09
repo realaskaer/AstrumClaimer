@@ -31,41 +31,6 @@ async def sleep(self, min_time=None, max_time=None):
     await asyncio.sleep(duration)
 
 
-def create_transfer_list():
-    from config import (
-        ACCOUNT_NAMES, TRANSFERS_ADDRESSES
-    )
-
-    file_data = {}
-    file_path = 'transfers_addresses'
-
-    if ACCOUNT_NAMES and TRANSFERS_ADDRESSES:
-        with open(f'./data/services/{file_path}.json', 'w') as file:
-            for account_name, cex_wallet in zip(ACCOUNT_NAMES, TRANSFERS_ADDRESSES):
-                file_data[str(account_name)] = str(cex_wallet).strip()
-            json.dump(file_data, file, indent=4)
-        cprint(f'✅ Successfully added and saved addresses for transfers', 'light_blue')
-        cprint(f'⚠️ Check all transfers wallets by yourself to avoid problems',
-               'light_yellow', attrs=["blink"])
-    else:
-        cprint('❌ Put your wallets into files, before running this function', 'light_red')
-
-
-def get_wallet_for_transfer(self):
-    file_path = f'transfers_addresses'
-
-    try:
-        with open(f'./data/services/{file_path}.json') as file:
-            from json import load
-            transfers_addresses_list = load(file)
-            transfer_address = transfers_addresses_list[self.client.account_name]
-        return transfer_address
-    except json.JSONDecodeError:
-        raise RuntimeError(f"Bad data in {file_path}.json")
-    except Exception as error:
-        raise RuntimeError(f'There is no wallet listed for transfers: {error}')
-
-
 def get_accounts_data():
     try:
         decrypted_data = io.BytesIO()
@@ -105,32 +70,21 @@ def get_accounts_data():
                     cprint('\n⚠️ Wrong page name! ⚠️', color='light_red', attrs=["blink"])
                     raise ValueError(f"{error}")
 
+            wb = wb.where(pd.notnull(wb), None)
+
             accounts_data = {}
+            accounts_data['accounts'] = {}
             for index, row in wb.iterrows():
-                account_name = row["Name"]
-                private_key = row["Private Key"]
-                proxy = row["Proxy"]
-                transfer_address = row["Transfer address"]
+                if row['Name']:
+                    accounts_data['accounts'] |= {
+                        f"{row['Name']}": {
+                            "evm_private_key": row["Private Key"],
+                            "proxy": row["Proxy"],
+                            "evm_deposit_address": row['Transfer address'],
+                        }
+                    }
 
-                accounts_data[int(index) + 1] = {
-                    "account_number": account_name,
-                    "private_key": private_key,
-                    "proxy": proxy,
-                    "transfer_address": transfer_address,
-                }
-
-            acc_names, private_keys, proxies, transfer_addresses, = [], [], [], []
-            for k, v in accounts_data.items():
-                acc_names.append(v['account_number'] if isinstance(v['account_number'], (int, str)) else None)
-                private_keys.append(v['private_key'])
-                proxies.append(v['proxy'] if isinstance(v['proxy'], str) else None)
-                transfer_addresses.append(v['transfer_address'] if isinstance(v['transfer_address'], str) else None)
-
-            acc_names = [str(item).strip() for item in acc_names if item is not None]
-            proxies = [str(item).strip() for item in proxies if item is not None]
-            transfer_addresses = [str(item).strip() for item in transfer_addresses if item is not None]
-
-            return acc_names, private_keys, proxies, transfer_addresses
+            return accounts_data
     except (DecryptionError, InvalidKeyError, DecryptionError, ValueError):
         os.system("pause")
 

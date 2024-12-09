@@ -5,13 +5,14 @@ import random
 import telebot
 import asyncio
 import traceback
+
+from config import ACCOUNTS_DATA
 from modules import Logger
 from aiohttp import ClientSession
 from utils.networks import EthereumRPC
 from web3 import AsyncWeb3, AsyncHTTPProvider
 from functions import get_rpc_by_chain_name
 from modules.interfaces import SoftwareException, FaucetException
-from config import ACCOUNT_NAMES, PRIVATE_KEYS, PROXIES
 from utils.route_generator import AVAILABLE_MODULES_INFO, get_func_by_name
 from utils.tools import network_handler
 from dev import GeneralSettings, Settings
@@ -21,25 +22,24 @@ class Runner(Logger):
 
     @staticmethod
     def get_wallets():
+        cfg_acc_names = copy.deepcopy(list(ACCOUNTS_DATA['accounts'].keys()))
         account_names = []
 
         if GeneralSettings.WALLETS_TO_WORK == 0:
-            account_names = copy.deepcopy(ACCOUNT_NAMES)
+            account_names = cfg_acc_names
         elif isinstance(GeneralSettings.WALLETS_TO_WORK, int):
-            account_names = copy.deepcopy([ACCOUNT_NAMES[GeneralSettings.WALLETS_TO_WORK - 1]])
+            account_names = [cfg_acc_names[GeneralSettings.WALLETS_TO_WORK - 1]]
         elif isinstance(GeneralSettings.WALLETS_TO_WORK, tuple):
-            account_names = copy.deepcopy(
-                [ACCOUNT_NAMES[i - 1] for i in GeneralSettings.WALLETS_TO_WORK if 0 < i <= len(ACCOUNT_NAMES)]
-            )
+            account_names = [cfg_acc_names[i - 1] for i in GeneralSettings.WALLETS_TO_WORK if 0 < i <= len(cfg_acc_names)]
         elif isinstance(GeneralSettings.WALLETS_TO_WORK, list):
             for item in GeneralSettings.WALLETS_TO_WORK:
                 if isinstance(item, int):
-                    if 0 < item <= len(ACCOUNT_NAMES):
-                        account_names.append(ACCOUNT_NAMES[item - 1])
+                    if 0 < item <= len(cfg_acc_names):
+                        account_names.append(cfg_acc_names[item - 1])
                 elif isinstance(item, list) and len(item) == 2:
                     start, end = item
-                    if 0 < start <= end <= len(ACCOUNT_NAMES):
-                        account_names.extend([ACCOUNT_NAMES[i - 1] for i in range(start, end + 1)])
+                    if 0 < start <= end <= len(cfg_acc_names):
+                        account_names.extend([cfg_acc_names[i - 1] for i in range(start, end + 1)])
         else:
             account_names = []
 
@@ -48,22 +48,22 @@ class Runner(Logger):
         elif isinstance(GeneralSettings.WALLETS_TO_EXCLUDE, int):
             if GeneralSettings.WALLETS_TO_EXCLUDE <= len(account_names):
                 account_names = [account for account in account_names if
-                                 account != ACCOUNT_NAMES[GeneralSettings.WALLETS_TO_EXCLUDE - 1]]
+                                 account != cfg_acc_names[GeneralSettings.WALLETS_TO_EXCLUDE - 1]]
         elif isinstance(GeneralSettings.WALLETS_TO_EXCLUDE, tuple):
             indices_to_remove = sorted(GeneralSettings.WALLETS_TO_EXCLUDE, reverse=True)
             for index in indices_to_remove:
-                if 0 < index <= len(ACCOUNT_NAMES):
-                    account_names = [account for account in account_names if account != ACCOUNT_NAMES[index - 1]]
+                if 0 < index <= len(cfg_acc_names):
+                    account_names = [account for account in account_names if account != cfg_acc_names[index - 1]]
         elif isinstance(GeneralSettings.WALLETS_TO_EXCLUDE, list):
             for item in GeneralSettings.WALLETS_TO_EXCLUDE:
                 if isinstance(item, int):
-                    if 0 < item <= len(ACCOUNT_NAMES):
-                        account_names = [account for account in account_names if account != ACCOUNT_NAMES[item - 1]]
+                    if 0 < item <= len(cfg_acc_names):
+                        account_names = [account for account in account_names if account != cfg_acc_names[item - 1]]
                 elif isinstance(item, list) and len(item) == 2:
                     start, end = item
-                    if 0 < start <= end <= len(ACCOUNT_NAMES):
+                    if 0 < start <= end <= len(cfg_acc_names):
                         for i in range(start, end + 1):
-                            account_names = [account for account in account_names if account != ACCOUNT_NAMES[i - 1]]
+                            account_names = [account for account in account_names if account != cfg_acc_names[i - 1]]
         else:
             account_names = []
 
@@ -176,7 +176,8 @@ class Runner(Logger):
 
     async def check_proxies_status(self):
         tasks = []
-        for proxy in PROXIES:
+        proxies = [account['proxy'] for account in ACCOUNTS_DATA['accounts'].values() if account['proxy']]
+        for proxy in proxies:
             tasks.append(self.check_proxy_status(None, proxy=proxy))
         await asyncio.gather(*tasks)
 
@@ -198,22 +199,7 @@ class Runner(Logger):
 
     @staticmethod
     def get_proxy_for_account(account_name):
-        if GeneralSettings.USE_PROXY:
-            try:
-                account_number = ACCOUNT_NAMES.index(account_name)
-                num_proxies = len(PROXIES)
-                return PROXIES[account_number % num_proxies]
-            except Exception as error:
-                raise SoftwareException(f"Bad data in proxy: {error}")
-
-    @staticmethod
-    def get_evm_private_key_for_account(account_name):
-        try:
-            account_number = ACCOUNT_NAMES.index(account_name)
-            num_private_keys = len(PRIVATE_KEYS)
-            return PRIVATE_KEYS[account_number % num_private_keys]
-        except Exception as error:
-            raise SoftwareException(f"Bad data in EVM private key: {error}")
+        return ACCOUNTS_DATA[account_name]['proxy']
 
     def get_current_progress_for_account(self, account_name):
         route_data = self.load_routes().get(str(account_name), {}).get('route', [])
@@ -228,8 +214,8 @@ class Runner(Logger):
     async def run_account_modules(self, account_name: str, index: int = 1, parallel_mode: bool = False):
         message_list, result_list, module_counter = [], [], 0
         try:
-            evm_private_key = self.get_evm_private_key_for_account(account_name)
-            proxy = self.get_proxy_for_account(account_name)
+            evm_private_key = ACCOUNTS_DATA['accounts'][account_name]['evm_private_key']
+            proxy = ACCOUNTS_DATA['accounts'][account_name]['proxy']
             current_step, route_data = self.get_current_progress_for_account(account_name)
             route_list_info = [[*i.split(":")] for i in route_data]
             if current_step >= len(route_list_info):

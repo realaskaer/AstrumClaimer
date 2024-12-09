@@ -2,10 +2,10 @@ import copy
 import json
 import random
 
+from config import ACCOUNTS_DATA
 from modules.interfaces import SoftwareException
 from utils.tools import clean_progress_file
 from functions import *
-from config import ACCOUNT_NAMES
 from modules import Logger
 from dev import GeneralSettings, Settings
 
@@ -15,6 +15,7 @@ AVAILABLE_MODULES_INFO = {
     wrap_native                         : (wrap_native, 2, 'Wrap Native', 0, [0]),
     movement_claim_on_l2                : (movement_claim_on_l2, 2, 'Claim $MOVE on L2 Mainnet', 0, [0]),
     movement_claim_on_ethereum          : (movement_claim_on_ethereum, 2, 'Claim $MOVE on Ethereum Mainnet', 0, [0]),
+    movement_transfer_move              : (movement_transfer_move, 2, 'Transfer $MOVE on Ethereum Mainnet', 0, [0]),
     unwrap_native                       : (unwrap_native, 2, 'Unwrap Native', 0, [0]),
     transfer_eth                        : (transfer_eth, 3, 'Transfer $ETH', 0, [0]),
 }
@@ -97,26 +98,27 @@ class RouteGenerator(Logger):
 
     def classic_routes_json_save(self):
         clean_progress_file()
+        acc_data = ACCOUNTS_DATA['accounts']
         with open(Settings.PROGRESS_FILE_PATH, 'w') as file:
             accounts_data = {}
+            cfg_acc_names = copy.deepcopy(list(acc_data.keys()))
+
             account_names = []
             if GeneralSettings.WALLETS_TO_WORK == 0:
-                account_names = copy.deepcopy(ACCOUNT_NAMES)
+                account_names = cfg_acc_names
             elif isinstance(GeneralSettings.WALLETS_TO_WORK, int):
-                account_names = copy.deepcopy([ACCOUNT_NAMES[GeneralSettings.WALLETS_TO_WORK - 1]])
+                account_names = [cfg_acc_names[GeneralSettings.WALLETS_TO_WORK - 1]]
             elif isinstance(GeneralSettings.WALLETS_TO_WORK, tuple):
-                account_names = copy.deepcopy(
-                    [ACCOUNT_NAMES[i - 1] for i in GeneralSettings.WALLETS_TO_WORK if 0 < i <= len(ACCOUNT_NAMES)]
-                )
+                account_names = [cfg_acc_names[i - 1] for i in GeneralSettings.WALLETS_TO_WORK if 0 < i <= len(cfg_acc_names)]
             elif isinstance(GeneralSettings.WALLETS_TO_WORK, list):
                 for item in GeneralSettings.WALLETS_TO_WORK:
                     if isinstance(item, int):
-                        if 0 < item <= len(ACCOUNT_NAMES):
-                            account_names.append(ACCOUNT_NAMES[item - 1])
+                        if 0 < item <= len(cfg_acc_names):
+                            account_names.append(cfg_acc_names[item - 1])
                     elif isinstance(item, list) and len(item) == 2:
                         start, end = item
-                        if 0 < start <= end <= len(ACCOUNT_NAMES):
-                            account_names.extend([ACCOUNT_NAMES[i - 1] for i in range(start, end + 1)])
+                        if 0 < start <= end <= len(cfg_acc_names):
+                            account_names.extend([cfg_acc_names[i - 1] for i in range(start, end + 1)])
             else:
                 account_names = []
 
@@ -125,23 +127,23 @@ class RouteGenerator(Logger):
             elif isinstance(GeneralSettings.WALLETS_TO_EXCLUDE, int):
                 if GeneralSettings.WALLETS_TO_EXCLUDE <= len(account_names):
                     account_names = [account for account in account_names if
-                                     account != ACCOUNT_NAMES[GeneralSettings.WALLETS_TO_EXCLUDE - 1]]
+                                     account != cfg_acc_names[GeneralSettings.WALLETS_TO_EXCLUDE - 1]]
             elif isinstance(GeneralSettings.WALLETS_TO_EXCLUDE, tuple):
                 indices_to_remove = sorted(GeneralSettings.WALLETS_TO_EXCLUDE, reverse=True)
                 for index in indices_to_remove:
-                    if 0 < index <= len(ACCOUNT_NAMES):
-                        account_names = [account for account in account_names if account != ACCOUNT_NAMES[index - 1]]
+                    if 0 < index <= len(cfg_acc_names):
+                        account_names = [account for account in account_names if account != cfg_acc_names[index - 1]]
             elif isinstance(GeneralSettings.WALLETS_TO_EXCLUDE, list):
                 for item in GeneralSettings.WALLETS_TO_EXCLUDE:
                     if isinstance(item, int):
-                        if 0 < item <= len(ACCOUNT_NAMES):
-                            account_names = [account for account in account_names if account != ACCOUNT_NAMES[item - 1]]
+                        if 0 < item <= len(cfg_acc_names):
+                            account_names = [account for account in account_names if account != cfg_acc_names[item - 1]]
                     elif isinstance(item, list) and len(item) == 2:
                         start, end = item
-                        if 0 < start <= end <= len(ACCOUNT_NAMES):
+                        if 0 < start <= end <= len(cfg_acc_names):
                             for i in range(start, end + 1):
                                 account_names = [account for account in account_names if
-                                                 account != ACCOUNT_NAMES[i - 1]]
+                                                 account != cfg_acc_names[i - 1]]
             else:
                 account_names = []
 
@@ -149,13 +151,13 @@ class RouteGenerator(Logger):
                 random.shuffle(account_names)
 
             for account_name in account_names:
-                if isinstance(account_name, (str, int)):
-                    classic_route = self.classic_generate_route()
-                    account_data = {
-                        "current_step": 0,
-                        "route": classic_route
-                    }
-                    accounts_data[str(account_name)] = account_data
+                classic_route = self.classic_generate_route()
+
+                account_data = {
+                    "current_step": 0,
+                    "route": classic_route
+                }
+                accounts_data[account_name] = account_data
             json.dump(accounts_data, file, indent=4)
         self.logger_msg(
             None, None,
