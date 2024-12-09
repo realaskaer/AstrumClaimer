@@ -8,7 +8,7 @@ from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
 from modules.interfaces import SoftwareException
-from utils.networks import BeraChainRPC
+from utils.networks import EthereumRPC
 from modules import Client
 from dev import GeneralSettings
 from config import ACCOUNT_NAMES, PRIVATE_KEYS, PROXIES
@@ -89,7 +89,8 @@ class TxChecker:
             else:
                 raise SoftwareException(f"Can`t get nonce, response: {await response.text()}")
 
-        except Exception:
+        except Exception as error:
+            client.logger_msg(*client.acc_info, msg=f'Error: {error}')
             move_drop, move_l2_drop = 'ERROR', 'ERROR'
 
         return move_drop, move_l2_drop
@@ -132,7 +133,7 @@ class TxChecker:
             account_data = {
                 'account_name': account[0],
                 'evm_private_key': account[1],
-                'network': BeraChainRPC,
+                'network': EthereumRPC,
                 'proxy': proxy,
             }
             accounts_data.append(account_data)
