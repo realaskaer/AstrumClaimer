@@ -36,7 +36,7 @@ class TxChecker:
 
             return response['nonce']
         except Exception as error:
-            if 'You are not allowed' in str(error):
+            if 'You are not allowed' in str(error) or isinstance(error, TypeError):
                 await client.change_proxy()
                 raise SoftwareException('You IP(country) is Restricted Territory')
             else:
