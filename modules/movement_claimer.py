@@ -90,6 +90,11 @@ class MovementClaimer(Logger, RequestClient):
                     type_msg='success'
                 )
                 return False
+            else:
+                self.client.logger_msg(
+                    *self.client.acc_info, msg=f'You are not eligible to claim $MOVE', type_msg='error'
+                )
+                return False
         else:
             raise SoftwareExceptionWithoutRetry(f'You are not eligible to claim $MOVE')
 
