@@ -66,7 +66,7 @@ class TxChecker:
 
         response = await RequestClient(client).make_request("POST", url, headers=headers, json=json_data)
 
-        if response.get('isEligible'):
+        if response.get('isEligible') or response.get('claimedOnL1') or response.get('claimedOnL2'):
             move_drop, move_l2_drop = response['amount'], response['amountL2']
             client.logger_msg(
                 *client.acc_info, msg=f'You are eligible to claim $MOVE: Now: {move_drop}, L2: {move_l2_drop}',
