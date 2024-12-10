@@ -10,7 +10,7 @@ from openpyxl.utils import get_column_letter
 from config import ACCOUNTS_DATA
 from utils.networks import EthereumRPC
 from modules import Client
-from modules.interfaces import RequestClient
+from modules.interfaces import RequestClient, SoftwareException
 
 
 class TxChecker:
@@ -31,9 +31,16 @@ class TxChecker:
             'sec-fetch-site': 'same-origin',
         }
 
-        response = await RequestClient(client).make_request(url=url, headers=headers)
+        try:
+            response = await RequestClient(client).make_request(url=url, headers=headers)
 
-        return response['nonce']
+            return response['nonce']
+        except Exception as error:
+            if 'You are not allowed' in str(error):
+                await client.change_proxy()
+                raise SoftwareException('You IP(country) is Restricted Territory')
+            else:
+                raise error
 
     async def get_drop_amount(self, client):
         headers = {

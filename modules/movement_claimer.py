@@ -40,10 +40,16 @@ class MovementClaimer(Logger, RequestClient):
     async def get_nonce(self, first_try):
         if not self.nonce or first_try:
             url = 'https://claims.movementnetwork.xyz/api/get-nonce'
+            try:
+                response = await self.make_request(url=url, headers=self.headers)
 
-            response = await self.make_request(url=url, headers=self.headers)
-
-            self.nonce = response['nonce']
+                self.nonce = response['nonce']
+            except Exception as error:
+                if 'You are not allowed' in str(error):
+                    await self.client.change_proxy()
+                    raise SoftwareExceptionWithoutRetry('You IP(country) is Restricted Territory')
+                else:
+                    raise error
 
     async def get_drop_status(self, first_try: bool = False):
         await self.get_nonce(first_try)
