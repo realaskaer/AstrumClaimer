@@ -45,7 +45,7 @@ class MovementClaimer(Logger, RequestClient):
 
                 self.nonce = response['nonce']
             except Exception as error:
-                if 'You are not allowed' in str(error):
+                if 'You are not allowed' in str(error) or isinstance(error, TypeError):
                     await self.client.change_proxy()
                     raise SoftwareExceptionWithoutRetry('You IP(country) is Restricted Territory')
                 else:

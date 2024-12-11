@@ -2,19 +2,17 @@ import random
 import asyncio
 
 from asyncio import sleep
-from aiohttp import ClientSession, TCPConnector
-from aiohttp_socks import ProxyConnector
-from eth_account.messages import encode_defunct
-from eth_typing import HexStr
-from web3.contract import AsyncContract
-from web3.exceptions import TransactionNotFound
-from modules import Logger, RequestClient
-from config import TOKENS_PER_CHAIN, ACCOUNTS_DATA, CHAIN_IDS
 from config import ERC20_ABI
-from web3 import AsyncHTTPProvider, AsyncWeb3
-from dev import GeneralSettings, Settings
-from modules.interfaces import BlockchainException, SoftwareException, SoftwareExceptionWithoutRetry
+from eth_typing import HexStr
 from utils.tools import network_handler
+from web3.contract import AsyncContract
+from dev import GeneralSettings, Settings
+from modules import Logger, RequestClient
+from web3 import AsyncHTTPProvider, AsyncWeb3
+from web3.exceptions import TransactionNotFound
+from eth_account.messages import encode_defunct
+from config import TOKENS_PER_CHAIN, ACCOUNTS_DATA, CHAIN_IDS
+from modules.interfaces import BlockchainException, SoftwareException, SoftwareExceptionWithoutRetry
 
 
 class Client(Logger, RequestClient):
@@ -120,6 +118,7 @@ class Client(Logger, RequestClient):
                     break
 
             self.proxy_init = new_proxy
+            self.proxy_url = f"http://{new_proxy}"
 
             self.request_kwargs = {
                 "proxy": f"http://{new_proxy}", "verify_ssl": False

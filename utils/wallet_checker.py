@@ -79,14 +79,16 @@ class TxChecker:
                 *client.acc_info, msg=f'You are eligible to claim $MOVE: Now: {move_drop}, L2: {move_l2_drop}',
                 type_msg='success'
             )
+            claimed = response.get('claimedOnL1', False)
+            registered = response.get('claimedOnL2', False)
+
+            return move_drop, move_l2_drop, claimed, registered
         else:
             client.logger_msg(
                 *client.acc_info, msg=f'You are not eligible to claim $MOVE',
                 type_msg='error'
             )
-            move_drop, move_l2_drop = '0', '0'
-
-        return move_drop, move_l2_drop
+            return '0', '0', False, False
 
     async def get_account_data(self, account_data, index):
         client = Client(account_data)
@@ -96,7 +98,7 @@ class TxChecker:
         counter = 0
         while True:
             try:
-                move_drop, move_l2_drop = await self.get_drop_amount(client)
+                move_drop, move_l2_drop, claimed, registered = await self.get_drop_amount(client)
                 break
             except Exception as error:
                 counter += 1
@@ -104,7 +106,7 @@ class TxChecker:
                 await client.change_proxy()
                 await asyncio.sleep(5)
                 if counter > 10:
-                    move_drop, move_l2_drop = 'ERROR', 'ERROR'
+                    move_drop, move_l2_drop, claimed, registered = 'ERROR', 'ERROR', 'ERROR', 'ERROR'
                     break
 
         full_data = {
@@ -113,6 +115,8 @@ class TxChecker:
             'Address': account_address,
             "MOVE": move_drop,
             "MOVE_L2": move_l2_drop,
+            "Claimed": claimed,
+            "Registered": registered,
         }
 
         return full_data
@@ -120,7 +124,7 @@ class TxChecker:
     async def check_wallets(self):
         cprint('✅  Processing wallets...')
 
-        fields = ['#', 'Account Name', 'Address', 'MOVE', 'MOVE_L2']
+        fields = ['#', 'Account Name', 'Address', 'MOVE', 'MOVE_L2', 'Claimed', 'Registered']
 
         table = PrettyTable()
         table.field_names = [colored(field) for field in fields]
@@ -197,6 +201,8 @@ class TxChecker:
             for field in fields:
                 if field in ['#', 'Account Name', 'Address']:
                     colored_row_data.append(colored(row[field], 'light_green'))
+                elif field in ['Claimed', 'Registered']:
+                    colored_row_data.append(colored(row[field], 'light_cyan'))
                 elif field in ['MOVE']:
                     total_move += float(row[field] if row[field] != 'ERROR' else 0)
                     colored_row_data.append(colored(row[field], 'light_magenta'))
@@ -204,7 +210,7 @@ class TxChecker:
                     total_move_l2 += float(row[field] if row[field] != 'ERROR' else 0)
                     colored_row_data.append(colored(row[field], 'light_magenta'))
                 else:
-                    colored_row_data.append(colored(row[field], 'light_cyan'))
+                    colored_row_data.append(colored(row[field], 'cyan'))
             table.add_row(colored_row_data, divider=True)
 
         print(table)
