@@ -8,16 +8,15 @@ import traceback
 import msoffcrypto
 import pandas as pd
 from getpass import getpass
-from aiohttp import ClientError
-from python_socks._protocols.errors import ReplyError
 from termcolor import cprint
-from web3 import AsyncWeb3, AsyncHTTPProvider
-from msoffcrypto.exceptions import DecryptionError, InvalidKeyError
-from python_socks import ProxyError
-from web3.exceptions import ContractLogicError
-
+from aiohttp import ClientError, ClientConnectorError
 from utils.networks import EthereumRPC
 from dev import GeneralSettings, Settings
+from web3 import AsyncWeb3, AsyncHTTPProvider
+from web3.exceptions import ContractLogicError
+from python_socks._protocols.errors import ReplyError
+from msoffcrypto.exceptions import DecryptionError, InvalidKeyError
+from python_socks import ProxyError, ProxyTimeoutError, ProxyConnectionError
 
 
 async def sleep(self, min_time=None, max_time=None):
@@ -198,7 +197,7 @@ def helper(func):
     async def wrapper(self, *args, **kwargs):
         from modules.interfaces import (
             BlockchainException, SoftwareException, SoftwareExceptionWithoutRetry,
-            BlockchainExceptionWithoutRetry, SoftwareExceptionHandled, FaucetException
+            BlockchainExceptionWithoutRetry, SoftwareExceptionHandled, InsufficientBalanceException
         )
 
         attempts = 0
@@ -219,24 +218,27 @@ def helper(func):
                     self.logger_msg(*self.client.acc_info, msg=msg, type_msg='error')
                     return False
 
-                elif any(keyword in str(error) for keyword in (
-                        'Bad Gateway', '403', 'SSL', 'Invalid proxy', 'rate limit', '429', '407', '503'
-                )):
+                elif not isinstance(error, asyncio.exceptions.IncompleteReadError) and "0 bytes read" in str(error):
+                    msg = f'Probably SOCKS5 request was bad'
                     self.logger_msg(*self.client.acc_info, msg=msg, type_msg='warning')
                     await self.client.change_proxy()
                     continue
 
-                elif 'Error code' in str(error):
-                    msg = f'{error}. Will try again...'
+                elif any(keyword in str(error) for keyword in (
+                        '502 Bad Gateway', 'Invalid proxy', 'NO_HOST_CONNECTION', 'www.cloudflare.com',
+                )) or isinstance(error, asyncio.exceptions.IncompleteReadError):
 
-                elif 'Server disconnected' in str(error):
-                    msg = f'{error}. Will try again...'
+                    if 'www.cloudflare.com' in str(error):
+                        msg = f'Response came from Cloudflare server(likely IP or Server got problem), will change proxy'
+                    elif '0 bytes read' in str(error):
+                        msg = f'Probably SOCKS5 request was bad'
+
+                    self.logger_msg(*self.client.acc_info, msg=msg, type_msg='warning')
+                    await self.client.change_proxy()
+                    continue
 
                 elif 'StatusCode.UNAVAILABLE' in str(error):
                     msg = f'RPC got autism response, will try again......'
-
-                elif '<html lang="en">' in str(error):
-                    msg = f'Proxy got non-permanent ban, will try again...'
 
                 elif 'insufficient funds' in str(error):
                     msg = f'Insufficient funds to complete transaction'
@@ -244,35 +246,40 @@ def helper(func):
                 elif 'gas required exceeds' in str(error):
                     msg = f'Not enough {self.client.network.token} for transaction gas payment'
 
-                elif isinstance(error, ContractLogicError):
-                    msg = f"Contract reverted: {error}"
-
                 elif isinstance(error, SoftwareExceptionHandled):
                     self.logger_msg(*self.client.acc_info, msg=f"{error}", type_msg='warning')
                     return True
-
-                elif isinstance(error, FaucetException):
-                    if not GeneralSettings.BREAK_FAUCET:
-                        self.logger_msg(*self.client.acc_info, msg=f"{error}", type_msg='warning')
-                        await self.client.change_proxy()
-                        continue
-                    else:
-                        self.logger_msg(*self.client.acc_info, msg=f"{error}", type_msg='warning')
-                        raise SoftwareException(f"{error}")
 
                 elif isinstance(error, (SoftwareExceptionWithoutRetry, BlockchainExceptionWithoutRetry)):
                     self.logger_msg(self.client.account_name, None, msg=msg, type_msg='error')
                     return False
 
-                elif isinstance(error, (SoftwareException, BlockchainException)):
+                elif isinstance(error, (SoftwareException, InsufficientBalanceException)):
                     msg = f'{error}'
 
-                elif isinstance(error, (ClientError, asyncio.TimeoutError, ProxyError, ReplyError)):
+                elif isinstance(error, ContractLogicError):
+                    msg = f"Contract reverted: {error}"
+
+                elif isinstance(error, BlockchainException):
+                    if 'insufficient funds' not in str(error):
+                        self.logger_msg(
+                            self.client.account_name,
+                            None, msg=f'Maybe problem with node: {self.client.rpc_url}', type_msg='warning'
+                        )
+                        await self.client.change_rpc()
+
+                elif isinstance(error, (
+                        ClientError, asyncio.TimeoutError, ProxyError, ReplyError, ConnectionResetError,
+                        ProxyTimeoutError, ProxyConnectionError, asyncio.exceptions.IncompleteReadError,
+                        ClientConnectorError
+                )):
+
                     self.logger_msg(
                         *self.client.acc_info,
                         msg=f"Connection to RPC is not stable. Will try again in 10 seconds...",
                         type_msg='warning'
                     )
+
                     await asyncio.sleep(10)
                     self.logger_msg(*self.client.acc_info, msg=msg, type_msg='warning')
 
@@ -285,7 +292,6 @@ def helper(func):
                                 f'Account can not find a good proxy {GeneralSettings.PROXY_REPLACEMENT_COUNT} times'
                             )
                     attempts -= 1
-
                     continue
 
                 else:
@@ -308,7 +314,9 @@ def helper(func):
                 else:
                     if not no_sleep_flag:
                         await sleep(self, *GeneralSettings.SLEEP_TIME_RETRY)
+
         return False
+
     return wrapper
 
 
