@@ -92,6 +92,10 @@ nonce: {timestamp}"""
                 passport_score = 20
                 self.logger_msg(*self.client.acc_info, msg=f"You already claimed $IP", type_msg='success')
                 return passport_score, True
+            elif response['msg']['status'] == 'can_claim':
+                passport_score = 20
+                self.logger_msg(*self.client.acc_info, msg=f"You can claim $IP", type_msg='success')
+                return passport_score, True
             else:
                 raise SoftwareExceptionWithoutRetry(
                     f"Response status: '{response['msg']['status']}' is not supported, response: {response}"
