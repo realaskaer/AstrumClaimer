@@ -126,7 +126,7 @@ class StoryChecker:
             for field in fields:
                 if field in ['#', 'Account Name', 'Address']:
                     colored_row_data.append(colored(row[field], 'light_green'))
-                elif field in ['Eligible']:
+                elif field in ['Eligible', 'Claimed']:
                     if row[field]:
                         colored_row_data.append(colored(row[field], 'light_green', attrs=['bold']))
                     else:
