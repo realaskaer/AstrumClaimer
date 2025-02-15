@@ -67,3 +67,4 @@ class GeneralSettings:
     EXCEL_FILE_PATH = None
     TG_TOKEN = None
     TG_ID = None
+    NEEDED_WALLETS_CHECKER = None

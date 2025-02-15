@@ -47,6 +47,11 @@ async def bridge_relay(module_input_data):
     return await worker.smart_bridge(dapp_id=3)
 
 
+async def story_claim(module_input_data):
+    worker = StoryClaimer(get_client(module_input_data))
+    return await worker.claim_ip()
+
+
 async def movement_claim_on_l2(module_input_data):
     worker = MovementClaimer(get_client(module_input_data))
     return await worker.claim_on_l2()

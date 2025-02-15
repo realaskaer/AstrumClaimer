@@ -20,24 +20,23 @@ class Client(Logger, RequestClient):
         Logger.__init__(self)
 
         self.module_input_data = module_input_data
-        account_name, evm_private_key, network, proxy = self.module_input_data.values()
 
-        self.network = network
-        self.eip1559_support = network.eip1559_support
-        self.token = network.token
-        self.explorer = network.explorer
-        self.chain_id = network.chain_id
+        self.network = module_input_data['network']
+        self.eip1559_support = self.network.eip1559_support
+        self.token = self.network.token
+        self.explorer = self.network.explorer
+        self.chain_id = self.network.chain_id
 
-        self.proxy_init = proxy
-        self.proxy_url = f"http://{proxy}"
+        self.proxy_init = module_input_data['proxy']
+        self.proxy_url = f"http://{self.proxy_init}"
 
-        self.request_kwargs = {"proxy": f"http://{proxy}", "verify_ssl": False} if proxy else {"verify_ssl": False}
-        self.rpc = random.choice(network.rpc)
+        self.request_kwargs = {"proxy": self.proxy_url, "verify_ssl": False} if self.proxy_init else {"verify_ssl": False}
+        self.rpc = random.choice(self.network.rpc)
         self.w3 = AsyncWeb3(AsyncHTTPProvider(self.rpc, request_kwargs=self.request_kwargs))
-        self.account_name = str(account_name)
-        self.private_key = evm_private_key
-        self.address = AsyncWeb3.to_checksum_address(self.w3.eth.account.from_key(evm_private_key).address)
-        self.acc_info = account_name, self.address, self.network.name
+        self.account_name = str(module_input_data['account_name'])
+        self.private_key = module_input_data['evm_private_key']
+        self.address = AsyncWeb3.to_checksum_address(self.w3.eth.account.from_key(self.private_key).address)
+        self.acc_info = self.account_name, self.address, self.network.name
 
     @staticmethod
     def get_user_agent():

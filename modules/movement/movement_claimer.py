@@ -2,8 +2,8 @@ from eth_abi import abi
 
 from config import MOVEMENT_ABI
 from utils.tools import helper, gas_checker
-from .interfaces import Logger, RequestClient, SoftwareException, SoftwareExceptionWithoutRetry
-from .client import Client
+from modules.interfaces import Logger, RequestClient, SoftwareException, SoftwareExceptionWithoutRetry
+from modules.client import Client
 from dev import Settings
 
 

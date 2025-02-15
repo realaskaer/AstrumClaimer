@@ -20,6 +20,8 @@ AVAILABLE_MODULES_INFO = {
     movement_transfer_move              : (movement_transfer_move, 2, 'Transfer $MOVE on Ethereum Mainnet', 0, [0]),
     unwrap_native                       : (unwrap_native, 2, 'Unwrap Native', 0, [0]),
     transfer_eth                        : (transfer_eth, 3, 'Transfer $ETH', 0, [0]),
+
+    story_claim                         : (story_claim, 2, 'Claim $IP on Story Mainnet', 0, [0]),
 }
 
 

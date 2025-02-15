@@ -7,7 +7,7 @@ from questionary import Choice, select
 from modules.interfaces import SoftwareException
 from utils.modules_runner import Runner
 from utils.route_generator import RouteGenerator
-from utils.wallet_checker import TxChecker
+from modules.movement.wallet_checker import TxChecker
 from utils.tools import progress_file_is_not_empty
 from dev import Settings
 from version import VERSION
@@ -98,7 +98,8 @@ def main():
                     # Choice("🚀 Start running routes for each wallet", 'classic_routes_run'),
                     # Choice("📄 Generate route for each wallet", 'classic_routes_gen'),
                     Choice("📂 Open presets", 'get_presets'),
-                    Choice("💰 Check Movement Drop", 'check_movement_drop'),
+                    # Choice("💰 Check Movement Drop", 'check_movement_drop'),
+                    Choice("💰 Check Story Drop", 'check_story_drop'),
                     Choice("✅ Check the connection of each proxy", 'check_proxy'),
                     Choice('❌ Exit', "exit")
                 ],
@@ -126,6 +127,10 @@ def main():
                     print()
                     tx_checker = TxChecker()
                     asyncio.run(tx_checker.check_wallets())
+                    print()
+                case 'check_story_drop':
+                    from modules.story.wallet_checker import StoryChecker
+                    asyncio.run(StoryChecker().check_progress())
                     print()
                 case 'get_presets':
                     print()
