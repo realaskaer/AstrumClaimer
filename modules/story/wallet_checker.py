@@ -26,7 +26,7 @@ class StoryChecker:
         counter = 0
         while True:
             try:
-                eligible_status, passport_score = await StoryClaimer(evm_client).claim_ip(from_checker=True)
+                eligible_status, passport_score, claimed = await StoryClaimer(evm_client).claim_ip(from_checker=True)
 
                 return {
                     "#": index + 1,
@@ -34,6 +34,7 @@ class StoryChecker:
                     "Address": evm_client.address,
                     "Eligible": eligible_status,
                     "Gitcoin Score": passport_score,
+                    "Claimed": claimed,
                 }
             except Exception as error:
                 traceback.print_exc()
@@ -47,12 +48,13 @@ class StoryChecker:
                         "Address": evm_client.address,
                         "Eligible": "ERROR",
                         "Gitcoin Score": "ERROR",
+                        "Claimed": "ERROR",
                     }
 
     async def check_progress(self):
         cprint('✅  Processing wallets for Story Drop')
 
-        fields = ['#', 'Account Name', 'Address', 'Eligible', 'Gitcoin Score']
+        fields = ['#', 'Account Name', 'Address', 'Eligible', 'Gitcoin Score', 'Claimed']
 
         table = PrettyTable()
         table.field_names = [colored(field, 'light_yellow', attrs=['bold']) for field in fields]

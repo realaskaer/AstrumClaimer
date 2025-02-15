@@ -74,25 +74,27 @@ nonce: {timestamp}"""
         url = 'https://claim.storyapis.com/claim/process'
 
         response = await self.make_request(method="GET", url=url, headers=self.headers)
-
         if response['code'] == 200:
             if response['msg']['status'] == 'not_eligible_gitcoin':
                 passport_score = float(response['msg']['gitCoin']['score'])
-                if passport_score < 20:
-                    self.logger_msg(
-                        *self.client.acc_info, msg=f"Your GitCoin passort score: {passport_score}, upgrade it first!",
-                        type_msg='warning'
-                    )
-                    return passport_score
+                self.logger_msg(
+                    *self.client.acc_info, msg=f"Your GitCoin passort score: {passport_score}, upgrade it first!",
+                    type_msg='warning'
+                )
+                return passport_score, False
                 # else:
                 #     self.logger_msg(
                 #         *self.client.acc_info, msg=f"Your GitCoin passort score: {passport_score}, you can claim $IP",
                 #         type_msg='success'
                 #     )
                 #     return passport_score
+            elif response['msg']['status'] == 'claimed':
+                passport_score = 20
+                self.logger_msg(*self.client.acc_info, msg=f"You already claimed $IP", type_msg='success')
+                return passport_score, True
             else:
                 raise SoftwareExceptionWithoutRetry(
-                    f"Response status: {response['msg']['status']} is not supported, response: {response}"
+                    f"Response status: '{response['msg']['status']}' is not supported, response: {response}"
                 )
         else:
             raise SoftwareExceptionWithoutRetry(
@@ -120,11 +122,12 @@ nonce: {timestamp}"""
         eligible_status = await self.sign_msg()
 
         gitcoin_score = 0
+        claimed = False
         if eligible_status:
-            gitcoin_score = await self.process_claim()
+            gitcoin_score, claimed = await self.process_claim()
 
         if from_checker:
-            return eligible_status, gitcoin_score
+            return eligible_status, gitcoin_score, claimed
 
         return True
 
