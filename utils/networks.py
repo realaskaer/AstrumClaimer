@@ -196,3 +196,14 @@ zkSyncEraRPC = Network(
     token='ETH',
     explorer='https://era.zksync.network/',
 )
+
+StoryRPC = Network(
+    name="Story",
+    rpc=[
+        "https://mainnet.storyrpc.io",
+    ],
+    chain_id=1514,
+    eip1559_support=False,
+    token="IP",
+    explorer="https://www.okx.com/ru/web3/explorer/story/",
+)

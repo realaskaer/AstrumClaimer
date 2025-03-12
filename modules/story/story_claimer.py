@@ -93,7 +93,7 @@ nonce: {timestamp}"""
                 self.logger_msg(*self.client.acc_info, msg=f"You already claimed $IP", type_msg='success')
                 return passport_score, True
             elif response['msg']['status'] == 'can_claim':
-                passport_score = 20
+                passport_score = 21
                 self.logger_msg(*self.client.acc_info, msg=f"You can claim $IP", type_msg='success')
                 return passport_score, True
             else:
@@ -121,6 +121,98 @@ nonce: {timestamp}"""
         #     "error": ""
         # }
 
+    async def claim_ip_util(self):
+        response = await self.make_request(
+            method='GET', url='https://claim.storyapis.com/address_data', headers=self.headers
+        )
+
+        if response.get('code') == 200:
+            merkle_tree = response['msg']['merkle_tree']
+
+            self.logger_msg(
+                *self.client.acc_info, msg=f"IP amount: {int(merkle_tree['amount']) / 10 ** 18:.2f}, initialize claiming..."
+            )
+
+            deadline = int(time.time() + 86400)
+            typed_data = {
+                "domain": {
+                    "name": "MerkleClaimer",
+                    "version": "1",
+                    "chainId": 1514,
+                    "verifyingContract": self.client.w3.to_checksum_address(merkle_tree['contractAddress'])
+                },
+                "message": {
+                    "index": int(merkle_tree['index']),
+                    "amount": merkle_tree['amount'],
+                    "to": self.client.address.lower(),
+                    "proof": merkle_tree['proof'],
+                    "deadline": deadline,
+                },
+                "primaryType": "ClaimOnBehalfData",
+                "types": {
+                    "EIP712Domain": [
+                        {
+                            "name": "name",
+                            "type": "string"
+                        },
+                        {
+                            "name": "version",
+                            "type": "string"
+                        },
+                        {
+                            "name": "chainId",
+                            "type": "uint256"
+                        },
+                        {
+                            "name": "verifyingContract",
+                            "type": "address"
+                        }
+                    ],
+                    "ClaimOnBehalfData": [
+                        {
+                            "name": "index",
+                            "type": "uint256"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "uint256"
+                        },
+                        {
+                            "name": "to",
+                            "type": "address"
+                        },
+                        {
+                            "name": "proof",
+                            "type": "bytes32[]"
+                        },
+                        {
+                            "name": "deadline",
+                            "type": "uint256"
+                        }
+                    ]
+                }
+            }
+
+            signature = self.client.w3.eth.account.sign_typed_data(
+                full_message=typed_data, private_key=self.client.private_key
+            ).signature.hex()
+
+            json_data = {
+                'address': self.client.address,
+                'deadline': deadline,
+                'signature': signature,
+            }
+
+            response = await self.make_request(
+                method="POST", url='https://claim.storyapis.com/claim', headers=self.headers, json=json_data
+            )
+
+            if response.get('code') == 200 and response.get('msg') == 'queued':
+                self.logger_msg(*self.client.acc_info, msg=f"Successfully claimed IP", type_msg='success')
+                return True
+
+        raise SoftwareException(f'Bad response from Story API: {response}')
+
     @helper
     async def claim_ip(self, from_checker: bool = False):
         eligible_status = await self.sign_msg()
@@ -133,32 +225,33 @@ nonce: {timestamp}"""
         if from_checker:
             return eligible_status, gitcoin_score, claimed
 
+        if gitcoin_score == 21 and claimed:
+            return await self.claim_ip_util()
+
         return True
 
+    def get_wallet_for_transfer(self):
+        from config import ACCOUNTS_DATA
+
+        cex_address = ACCOUNTS_DATA['accounts'][self.client.account_name].get('evm_deposit_address')
+
+        if not cex_address:
+            raise SoftwareExceptionWithoutRetry(f'There is no wallet listed for transfer, please add wallet into accounts_data.xlsx')
+
+        return cex_address
+
     @helper
-    @gas_checker
-    async def transfer_move(self):
-        self.logger_msg(*self.client.acc_info, msg=f'Initiate transfer')
+    async def transfer_ip(self):
+        self.logger_msg(*self.client.acc_info, msg=f'Initiate IP transfer')
 
         transfer_address = self.get_wallet_for_transfer()
 
-        balance_in_wei, balance, _ = await self.client.get_token_balance(
-            token_name="MOVE", token_address="0x3073f7aAA4DB83f95e9FFf17424F71D4751a3073"
-        )
+        balance_in_wei, balance = await self.client.get_smart_amount(settings=('100', '100'), fee_support=(0.05, 0.1))
 
-        token_contract = self.client.get_contract("0x3073f7aAA4DB83f95e9FFf17424F71D4751a3073")
+        transaction = await self.client.prepare_transaction(value=balance_in_wei) | {
+            'to': self.client.w3.to_checksum_address(transfer_address)
+        }
 
-        try:
-            transaction = await token_contract.functions.transfer(
-                self.client.w3.to_checksum_address(transfer_address),
-                balance_in_wei
-            ).build_transaction(await self.client.prepare_transaction())
-        except Exception as error:
-            if 'no data' in str(error):
-                raise SoftwareException('Not enough ETH for cover gas fee')
-            else:
-                raise error
-
-        self.logger_msg(*self.client.acc_info, msg=f"Transfer {balance} MOVE to {transfer_address} address")
+        self.logger_msg(*self.client.acc_info, msg=f"Transfer {balance} IP to {transfer_address} address")
 
         return await self.client.send_transaction(transaction)

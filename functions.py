@@ -52,6 +52,12 @@ async def story_claim(module_input_data):
     return await worker.claim_ip()
 
 
+async def story_transfer(module_input_data):
+    module_input_data['network'] = StoryRPC
+    worker = StoryClaimer(Client(module_input_data))
+    return await worker.transfer_ip()
+
+
 async def movement_claim_on_l2(module_input_data):
     worker = MovementClaimer(get_client(module_input_data))
     return await worker.claim_on_l2()

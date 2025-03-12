@@ -225,15 +225,17 @@ class Client(Logger, RequestClient):
             amount_in_wei, amount, _ = await self.get_token_balance(token_name)
             percent = round(random.uniform(float(settings[0]), float(settings[1])), 6) / 100
 
-            if fee_support:
-                amount -= fee_support
-
             amount = self.custom_round(number=amount * percent)
         else:
             amount = self.custom_round(number=settings)
 
         if amount == 0:
             raise SoftwareExceptionWithoutRetry('Can not return Zero amount!')
+
+        if fee_support:
+            if isinstance(fee_support, (list, tuple)):
+                fee_support = round(random.uniform(*fee_support), 6)
+            amount -= fee_support
 
         amount_in_wei = self.to_wei(amount, decimals)
 

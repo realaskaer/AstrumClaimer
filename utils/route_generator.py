@@ -22,6 +22,7 @@ AVAILABLE_MODULES_INFO = {
     transfer_eth                        : (transfer_eth, 3, 'Transfer $ETH', 0, [0]),
 
     story_claim                         : (story_claim, 2, 'Claim $IP on Story Mainnet', 0, [0]),
+    story_transfer                       : (story_transfer, 2, 'Transfer $IP on Story Mainnet to EVM Deposit Address', 0, [0]),
 }
 
 
