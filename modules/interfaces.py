@@ -1,7 +1,9 @@
 import asyncio
 import json as js
-
 import aiohttp.client_exceptions
+
+from json import JSONDecodeError
+from async_tls_client import AsyncSession
 from loguru import logger
 from sys import stderr
 from datetime import datetime
@@ -22,6 +24,10 @@ def get_user_agent():
 
 
 class InsufficientBalanceException(Exception):
+    pass
+
+
+class SoftwareExceptionWithProxy(Exception):
     pass
 
 
@@ -238,6 +244,131 @@ class RequestClient(ABC):
                 raise SoftwareExceptionWithoutRetry(error)
             except Exception as error:
                 raise SoftwareException(error)
+
+    async def make_tls_request(
+            self, url: str, method: str = "GET", headers: dict = None, cookies: dict = None, data: dict = None,
+            params: dict = None, json: dict = None, allow_redirects: bool = True, module_name: str = "Class",
+
+            return_response: bool = False,
+            return_response_text: bool = False,
+            return_response_json: bool = False,
+            return_response_headers: bool = False,
+            return_cookies: bool = False,
+            rate_limit_sleep: float = 60.0,
+
+            without_error: bool = False,
+            internal_errors: bool = False
+    ):
+
+        session = AsyncSession(client_identifier='chrome_131', random_tls_extension_order=True)
+
+        session.proxies = f"{self.client.proxy_url}"
+        session.headers = headers
+        if 'user-agent' not in headers:
+            session.headers |= {"user-agent": TOTAL_USER_AGENT}
+
+        if cookies:
+            session.headers['Cookie'] = "; ".join([f"{k}={v}" for k, v in cookies.items()])
+
+        if method == "POST":
+            func = session.post
+        elif method == "GET":
+            func = session.get
+        elif method == "PUT":
+            func = session.put
+        elif method == "PATCH":
+            func = session.patch
+        elif method == "DELETE":
+            func = session.delete
+        else:
+            raise SoftwareException(f"Method '{method}' is not available now")
+
+        resp_data = None
+
+        try:
+            response = await func(
+                url=url, data=data, cookies=cookies, headers=headers, params=params, json=json,
+                allow_redirects=allow_redirects, timeout_seconds=120, proxy={
+                    "http": f"{self.client.proxy_url}",
+                    "https": f"{self.client.proxy_url}"
+                }
+            )
+
+            if return_response:
+                resp_data = response
+            elif return_response_text:
+                resp_data = response.text
+            elif return_response_json:
+                resp_data = response.json()
+            elif return_response_headers:
+                return response.headers
+
+            if return_response or return_response_text or return_response_json:
+                if return_cookies:
+                    return response.cookies, resp_data
+                else:
+                    return resp_data
+
+            if response.status_code in [200, 201] or without_error:
+                content_type = response.headers.get("Content-Type", "")
+
+                if content_type == 'text/plain':
+                    text_data = response.text
+                    data = js.loads(text_data)
+                elif content_type in ['text/html', 'text/x-component']:
+                    data = response.text
+                elif content_type in ['image/png']:
+                    data = response.content
+                else:
+                    try:
+                        data = response.json()
+                    except JSONDecodeError:
+                        data = response.text
+
+                if return_cookies:
+                    return response.cookies, data
+                else:
+                    return data
+            elif response.status_code in [307, 303, 302, 202, 204]:
+                if return_cookies:
+                    return response.cookies, True
+                else:
+                    return True
+
+            elif response.status_code == 429:
+                self.client.logger_msg(
+                    *self.client.acc_info,
+                    msg=f"You reached rate limit with: {url}, please wait {rate_limit_sleep} second",
+                    type_msg="warning"
+                )
+                await self.client.change_proxy()
+                await self.client.smart_sleep(
+                    [rate_limit_sleep, rate_limit_sleep + 10], without_setting=True
+                )
+                raise SoftwareException('Exception for retry...')
+            elif response.status_code == 500 and internal_errors:
+                self.client.logger_msg(
+                    *self.client.acc_info,
+                    msg=f'Servers are overload, please wait a little and try again', type_msg='warning'
+                )
+                await self.client.smart_sleep([60, 120], without_setting=True)
+                raise SoftwareException('Exception for retry...')
+            elif response.status_code >= 400:
+                if not without_error:
+                    response_text = response.text or 'Empty response, probably Timeout or Internal server error'
+                    raise SoftwareException(
+                        f"Bad request to {self.__class__.__name__}({module_name}) API. Response Status: {response.status_code}. Response Text: {response_text}"
+                    )
+                else:
+                    return False
+            else:
+                response_text = response.text or 'Empty response, probably Timeout or Internal server error'
+                raise SoftwareException(
+                    f"Software do not support response with status: {response.status_code} Class name: {self.__class__.__name__} API Response: {response_text}"
+                )
+        except Exception as error:
+            raise error
+
 
     async def get_token_price_via_gate(self, token_name: str) -> float:
 

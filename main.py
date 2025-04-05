@@ -99,6 +99,7 @@ def main():
                     # Choice("📄 Generate route for each wallet", 'classic_routes_gen'),
                     Choice("📂 Open presets", 'get_presets'),
                     # Choice("💰 Check Movement Drop", 'check_movement_drop'),
+                    Choice("💰 Check Hyper Drop", 'check_hyper_drop'),
                     Choice("💰 Check Story Drop", 'check_story_drop'),
                     Choice("✅ Check the connection of each proxy", 'check_proxy'),
                     Choice('❌ Exit', "exit")
@@ -128,6 +129,9 @@ def main():
                     tx_checker = TxChecker()
                     asyncio.run(tx_checker.check_wallets())
                     print()
+                case 'check_hyper_drop':
+                    from modules.hyperlane.wallet_checker import HyperChecker
+                    asyncio.run(HyperChecker().check_progress())
                 case 'check_story_drop':
                     from modules.story.wallet_checker import StoryChecker
                     asyncio.run(StoryChecker().check_progress())

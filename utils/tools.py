@@ -197,7 +197,8 @@ def helper(func):
     async def wrapper(self, *args, **kwargs):
         from modules.interfaces import (
             BlockchainException, SoftwareException, SoftwareExceptionWithoutRetry,
-            BlockchainExceptionWithoutRetry, SoftwareExceptionHandled, InsufficientBalanceException
+            BlockchainExceptionWithoutRetry, SoftwareExceptionHandled, InsufficientBalanceException,
+            SoftwareExceptionWithProxy
         )
 
         attempts = 0
@@ -259,6 +260,9 @@ def helper(func):
 
                 elif isinstance(error, ContractLogicError):
                     msg = f"Contract reverted: {error}"
+
+                elif isinstance(error, SoftwareExceptionWithProxy):
+                    await self.client.change_proxy()
 
                 elif isinstance(error, BlockchainException):
                     if 'insufficient funds' not in str(error):

@@ -42,6 +42,12 @@ RELAY_AMOUNT_LIMITER = 0, (0.00005, 0.00007)  # лимитер для бридж
 
 TRANSFER_ETH_AMOUNT = ['100', '100']  # сумма трансфера ETH на кошелек "Transfer address"
 
-MOVEMENT_CLAIM_AT_AMOUNT = 50  # минимальная сумма, для запуска клейма софтом, если будет меньше то софт прекратит клейм
+MOVEMENT_CLAIM_AT_AMOUNT = 5  # минимальная сумма, для запуска клейма софтом, если будет меньше то софт прекратит клейм
 
 TOTAL_DECIMALS = 6  # количество знаков после запятой для всех транзакций
+
+#------------------------------------------------------HYPERLANE--------------------------------------------------------
+
+HYPERLANE_NETWORKS_REGISTER = ['Arbitrum']  # ['Arbitrum', 'Optimism', 'Base', 'Ethereum', 'BNB Chain']. Укажите одну из сетей, доступные названия в скобках в скобках
+HYPERLANE_TOKEN_REGISTER = 'HYPER'  # ['stHYPER']
+HYPERLANE_RECEIVE_ADDRESS = ['']  # адреса, куда будут приходить токены

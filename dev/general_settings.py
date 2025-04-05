@@ -68,3 +68,4 @@ class GeneralSettings:
     TG_TOKEN = None
     TG_ID = None
     NEEDED_WALLETS_CHECKER = None
+    ASTRUMSOLVER_API_KEY = None

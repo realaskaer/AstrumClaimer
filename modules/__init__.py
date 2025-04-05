@@ -5,3 +5,4 @@ from .binance import Binance
 from .relay import Relay
 from .story import *
 from .movement import *
+from .hyperlane import *

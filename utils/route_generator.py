@@ -17,6 +17,7 @@ AVAILABLE_MODULES_INFO = {
     bridge_relay                        : (bridge_relay, 2, 'Bridge Relay', 0, [0]),
     movement_claim_on_l2                : (movement_claim_on_l2, 2, 'Claim $MOVE on L2 Mainnet', 0, [0]),
     movement_claim_on_ethereum          : (movement_claim_on_ethereum, 2, 'Claim $MOVE on Ethereum Mainnet', 0, [0]),
+    hyper_register_on_drop              : (hyper_register_on_drop, 2, 'Register on HYPER drop', 0, [0]),
     movement_transfer_move              : (movement_transfer_move, 2, 'Transfer $MOVE on Ethereum Mainnet', 0, [0]),
     unwrap_native                       : (unwrap_native, 2, 'Unwrap Native', 0, [0]),
     transfer_eth                        : (transfer_eth, 3, 'Transfer $ETH', 0, [0]),

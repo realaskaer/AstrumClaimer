@@ -69,6 +69,12 @@ async def movement_claim_on_ethereum(module_input_data):
     return await worker.claim_on_ethereum()
 
 
+async def hyper_register_on_drop(module_input_data):
+    module_input_data['network'] = EthereumRPC
+    worker = HyperClaimer(get_client(module_input_data))
+    return await worker.register_on_drop()
+
+
 async def movement_transfer_move(module_input_data):
     module_input_data['network'] = EthereumRPC
     worker = MovementClaimer(get_client(module_input_data))
