@@ -3,6 +3,8 @@
 ## 🧩Модули
 
     1.  Movement Checker + Claimer
+    3.  Story Checker + Claimer
+    2.  Hyperlane Checker + Claimer
    
 ## ♾️Основные функции
 
@@ -38,6 +40,7 @@
 
 ```bash
   git clone https://github.com/askaer/AstrumClaimer.git
+  cd путь_до_папки_с_софтом
 ```
 
 Для установки необходимых библиотек, пропишите в консоль
@@ -49,7 +52,6 @@
 Запуск проекта
 
 ```bash
-  cd путь_до_папки/AstrumClaimer
   python main.py
 ```
 
