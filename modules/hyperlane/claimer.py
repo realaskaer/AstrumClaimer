@@ -160,7 +160,7 @@ class HyperClaimer(Logger, RequestClient):
                 "message": {
                     "eligibleAddress": self.client.address,
                     "chainId": chain_id,
-                    "amount": f"{round(allocation, 6)}",
+                    "amount": f"{allocation}",
                     "receivingAddress": receiving_address,
                     "tokenType": token_type
                 },
