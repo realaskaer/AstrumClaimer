@@ -67,7 +67,7 @@ class HyperClaimer(Logger, RequestClient):
                 self.logger_msg(
                     *self.client.acc_info, msg=f"Bad response from Hyperlane API: {error}", type_msg='warning'
                 )
-                return 0, 0
+                return 0, 'empty'
             else:
                 raise error
 

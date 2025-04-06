@@ -77,8 +77,8 @@ def get_accounts_data():
                 if row['Name']:
                     accounts_data['accounts'] |= {
                         f"{row['Name']}": {
-                            "evm_private_key": row["Private Key"],
-                            "proxy": row["Proxy"],
+                            "evm_private_key": row["Private Key"].strip(),
+                            "proxy": row["Proxy"].strip(),
                             "evm_deposit_address": row['Transfer address'],
                         }
                     }
