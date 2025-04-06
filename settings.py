@@ -48,6 +48,6 @@ TOTAL_DECIMALS = 6  # количество знаков после запято�
 
 #------------------------------------------------------HYPERLANE--------------------------------------------------------
 
-HYPERLANE_NETWORKS_REGISTER = ['Arbitrum']  # ['Arbitrum', 'Optimism', 'Base', 'Ethereum', 'BNB Chain']. Укажите одну из сетей, доступные названия в скобках в скобках
-HYPERLANE_TOKEN_REGISTER = 'HYPER'  # ['stHYPER']
+HYPERLANE_NETWORKS_REGISTER = ['']  # ['Arbitrum', 'Optimism', 'Base', 'Ethereum', 'BNB Chain']. Укажите одну из сетей, доступные названия в скобках в скобках
+HYPERLANE_TOKEN_REGISTER = ''  # 'stHYPER', 'HYPER'
 HYPERLANE_RECEIVE_ADDRESS = ['']  # адреса, куда будут приходить токены
