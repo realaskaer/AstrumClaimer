@@ -38,7 +38,6 @@ class HyperClaimer(Logger, RequestClient):
 
         self.cookies = {}
 
-    @helper
     async def check_drop_eligible(self, from_checker: bool = False):
 
         params = {
