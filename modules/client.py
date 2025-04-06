@@ -133,7 +133,7 @@ class Client(Logger, RequestClient):
         else:
             if not without_logs:
                 self.logger_msg(
-                    *self.client.acc_info,
+                    *self.acc_info,
                     msg=f'All your proxies are the same, can not change it', type_msg='warning'
                 )
 
