@@ -5,9 +5,13 @@ import random
 import asyncio
 import functools
 import traceback
+
+import httpx
 import msoffcrypto
 import pandas as pd
 from getpass import getpass
+
+from solana.exceptions import SolanaRpcException
 from termcolor import cprint
 from aiohttp import ClientError, ClientConnectorError
 from utils.networks import EthereumRPC
@@ -275,28 +279,40 @@ def helper(func):
 
                 elif isinstance(error, (
                         ClientError, asyncio.TimeoutError, ProxyError, ReplyError, ConnectionResetError,
-                        ProxyTimeoutError, ProxyConnectionError, asyncio.exceptions.IncompleteReadError,
-                        ClientConnectorError
+                        ProxyTimeoutError, ProxyConnectionError, httpx.ConnectTimeout, httpx.RemoteProtocolError,
+                        asyncio.exceptions.IncompleteReadError, ClientConnectorError, httpx.ProxyError,
+                        SolanaRpcException
+
+                )) or any(keyword in str(error) for keyword in (
+                        '502 Bad Gateway', 'Invalid proxy', 'NO_HOST_CONNECTION', 'www.cloudflare.com',
+                        '403 Forbidden', '504 Gateway', '503 Service', '500 Internal Server',
+                        '[SSL: WRONG_VERSION_NUMBER] wrong version number', 'no such host',
+                        '417 Expectation Failed', '407 Proxy Authentication Required',
+                        '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed',
+                        'connection reset by peer', 'certificate signed by unknown authority',
+                        'server gave HTTP response to HTTPS client', 'EOF', 'the target machine actively refused it',
+                        'tls: handshake failure', 'tls: bad record MAC', '503 No exit node'
                 )):
 
-                    self.logger_msg(
-                        *self.client.acc_info,
-                        msg=f"Connection to RPC is not stable. Will try again in 10 seconds...",
-                        type_msg='warning'
-                    )
+                    if 'www.cloudflare.com' in msg:
+                        msg = f'Response came from Cloudflare server(likely IP or Server got problem)'
+                    elif '403 Forbidden' in msg:
+                        msg = f'Probably your IP got problem by protection system'
+                    elif '0 bytes read' in msg:
+                        msg = f'Probably SOCKS5 request was bad'
+                    elif '502 Bad Gateway' in msg or '504 Gateway' in msg or '503 Service' in msg or '500 Internal Server' in msg:
+                        msg = f'API Server or proxy is not available now'
+                    elif 'SSL' in msg or 'certificate signed by unknown authority' in msg:
+                        msg = f"Your proxy SSL version is bad"
+                    elif 'connection reset by peer' in msg:
+                        msg = f"API Server reset connection by peer"
+                    elif 'no such host' in msg or 'the target machine actively refused it' in msg:
+                        msg = f'Probably your DNS domains is down, please set 8.8.8.8 and 8.8.4.4, and restart PC. If error still exist, try use VPN or another internet provider'
+                    if not msg:
+                        msg = 'Your proxy is probably not available'
 
-                    await asyncio.sleep(10)
                     self.logger_msg(*self.client.acc_info, msg=msg, type_msg='warning')
-
-                    if k % 2 == 0:
-                        if int(k / 2) < GeneralSettings.PROXY_REPLACEMENT_COUNT:
-                            await self.client.change_proxy()
-                            await self.client.change_rpc()
-                        else:
-                            raise SoftwareException(
-                                f'Account can not find a good proxy {GeneralSettings.PROXY_REPLACEMENT_COUNT} times'
-                            )
-                    attempts -= 1
+                    await self.client.change_proxy()
                     continue
 
                 else:
