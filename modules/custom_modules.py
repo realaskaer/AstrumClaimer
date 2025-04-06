@@ -3,7 +3,7 @@ import copy
 import random
 
 from dev import Settings
-from .client import Client
+from .evm_client import EVMClient
 from utils.tools import helper, sleep, network_handler, gas_checker
 from config import TOKENS_PER_CHAIN, WETH_ABI
 from .interfaces import (
@@ -12,7 +12,7 @@ from .interfaces import (
 
 
 class Custom(Logger, RequestClient):
-    def __init__(self, client: Client):
+    def __init__(self, client: EVMClient):
         self.client = client
         Logger.__init__(self)
         RequestClient.__init__(self, client)

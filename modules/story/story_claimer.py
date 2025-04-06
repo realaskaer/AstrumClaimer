@@ -1,13 +1,13 @@
 import time
 
-from modules.client import Client
+from modules.evm_client import EVMClient
 from utils.tools import helper, gas_checker
 from config import MOVEMENT_ABI, TOTAL_USER_AGENT
 from modules.interfaces import Logger, RequestClient, SoftwareException, SoftwareExceptionWithoutRetry
 
 
 class StoryClaimer(Logger, RequestClient):
-    def __init__(self, client: Client):
+    def __init__(self, client: EVMClient):
         Logger.__init__(self)
         RequestClient.__init__(self, client)
         self.client = client

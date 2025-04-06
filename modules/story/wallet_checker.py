@@ -9,7 +9,7 @@ import pandas as pd
 from datetime import datetime
 from config import ACCOUNTS_DATA
 from dev import GeneralSettings
-from modules.client import Client
+from modules.evm_client import EVMClient
 from prettytable import PrettyTable
 from termcolor import cprint, colored
 from utils.networks import EthereumRPC
@@ -19,7 +19,7 @@ from modules.story.story_claimer import StoryClaimer
 class StoryChecker:
     @staticmethod
     async def get_account_stats(account_data, index):
-        evm_client = Client(account_data)
+        evm_client = EVMClient(account_data)
 
         await asyncio.sleep(random.randint(1, 3))
 

@@ -4,6 +4,8 @@ import asyncio
 from asyncio import sleep
 from config import ERC20_ABI
 from eth_typing import HexStr
+
+from modules.client_utils import ClientUtils
 from utils.tools import network_handler
 from web3.contract import AsyncContract
 from dev import GeneralSettings, Settings
@@ -15,7 +17,7 @@ from config import TOKENS_PER_CHAIN, ACCOUNTS_DATA, CHAIN_IDS
 from modules.interfaces import BlockchainException, SoftwareException, SoftwareExceptionWithoutRetry
 
 
-class Client(Logger, RequestClient):
+class EVMClient(Logger, RequestClient):
     def __init__(self, module_input_data: dict):
         Logger.__init__(self)
 
@@ -37,6 +39,12 @@ class Client(Logger, RequestClient):
         self.private_key = module_input_data['evm_private_key']
         self.address = AsyncWeb3.to_checksum_address(self.w3.eth.account.from_key(self.private_key).address)
         self.acc_info = self.account_name, self.address, self.network.name
+
+    async def change_rpc(self):
+        return await ClientUtils(self).change_rpc()
+
+    async def change_proxy(self):
+        return await ClientUtils(self).change_proxy()
 
     @staticmethod
     def get_user_agent():
@@ -161,6 +169,12 @@ class Client(Logger, RequestClient):
             result_value = number / 10 ** decimals
             return result_value
 
+    async def smart_sleep(self, sleep_settings, without_setting:bool = False):
+        if GeneralSettings.SLEEP_MODE or without_setting:
+            duration = round(random.uniform(*sleep_settings), 2)
+            self.logger_msg(*self.acc_info, msg=f"💤 Sleeping for {duration} seconds\n")
+            await asyncio.sleep(duration)
+
     async def simulate_transfer(self, token_name: str) -> float:
         if token_name != self.token:
             token_contract = self.get_contract(TOKENS_PER_CHAIN[self.network.name][token_name])
@@ -251,7 +265,7 @@ class Client(Logger, RequestClient):
 
         self.module_input_data['network'] = get_rpc_by_chain_name(chain_name)
 
-        return Client(self.module_input_data)
+        return EVMClient(self.module_input_data)
 
     async def wait_for_receiving(
             self, chain_to_name: str, old_balance_data: tuple = None, token_name: str = None,

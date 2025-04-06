@@ -207,3 +207,14 @@ StoryRPC = Network(
     token="IP",
     explorer="https://www.okx.com/ru/web3/explorer/story/",
 )
+
+SolanaRPC = Network(
+    name="Solana",
+    rpc=[
+        "https://mainnet.helius-rpc.com/?api-key=6ef7a874-4198-4317-b1c6-22f875ec7efc",
+    ],
+    chain_id=1151111081099710,
+    eip1559_support=False,
+    token="SOL",
+    explorer="https://solscan.io/",
+)

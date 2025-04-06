@@ -9,7 +9,7 @@ from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
 from config import ACCOUNTS_DATA
 from utils.networks import EthereumRPC
-from modules import Client
+from modules import EVMClient
 from modules.interfaces import RequestClient, SoftwareException
 
 
@@ -91,7 +91,7 @@ class TxChecker:
             return '0', '0', False, False
 
     async def get_account_data(self, account_data, index):
-        client = Client(account_data)
+        client = EVMClient(account_data)
         account_name = account_data['account_name']
         account_address = client.address
 

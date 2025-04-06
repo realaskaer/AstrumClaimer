@@ -9,16 +9,29 @@ from datetime import datetime
 from dev import GeneralSettings
 from config import ACCOUNTS_DATA
 from .claimer import HyperClaimer
-from modules.client import Client
+from modules.evm_client import EVMClient
 from prettytable import PrettyTable
-from utils.networks import EthereumRPC
+from utils.networks import EthereumRPC, SolanaRPC
 from termcolor import cprint, colored
+
+from ..interfaces import SoftwareException
+from ..solana_client import SolanaClient
 
 
 class HyperChecker:
     @staticmethod
     async def get_account_stats(account_data, index):
-        evm_client = Client(account_data)
+
+        solana_client = False
+        if len(account_data['evm_private_key']) < 20:
+            raise SoftwareException('Please provide correct private key')
+        elif len(account_data['evm_private_key']) in [64, 66]:
+            account_data['network'] = EthereumRPC
+            client = EVMClient(account_data)
+        else:
+            account_data['network'] = SolanaRPC
+            client = SolanaClient(account_data)
+            solana_client = True
 
         await asyncio.sleep(random.randint(1, 3))
 
@@ -26,12 +39,14 @@ class HyperChecker:
         while True:
             try:
 
-                allocation, allocation_chain = await HyperClaimer(evm_client).register_on_drop(from_checker=True)
+                allocation, allocation_chain = await HyperClaimer(client).register_on_drop(
+                    from_checker=True, solana_client=solana_client
+                )
 
                 account_stats = {
                     "#": index + 1,
-                    "Account Name": evm_client.account_name,
-                    "Address": evm_client.address,
+                    "Account Name": client.account_name,
+                    "Address": client.address,
                     "Allocation": allocation,
                     "Reward Chain": allocation_chain.capitalize(),
                 }
@@ -39,12 +54,12 @@ class HyperChecker:
                 return account_stats
             except Exception as error:
                 traceback.print_exc()
-                evm_client.logger_msg(*evm_client.acc_info, msg=f"Can`t get account stats: {error}", type_msg="error")
+                client.logger_msg(*client.acc_info, msg=f"Can`t get account stats: {error}", type_msg="error")
                 if counter > 5:
                     return {
                         "#": index + 1,
-                        "Account Name": evm_client.account_name,
-                        "Address": evm_client.address,
+                        "Account Name": client.account_name,
+                        "Address": client.address,
                         "Allocation": "ERROR",
                         "Reward Chain": "ERROR",
                     }

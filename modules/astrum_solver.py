@@ -1,13 +1,13 @@
 import asyncio
 
 from dev import GeneralSettings
-from modules.client import Client
+from modules.evm_client import EVMClient
 from config import TOTAL_USER_AGENT
 from modules.interfaces import SoftwareException, SoftwareExceptionWithoutRetry, RequestClient, Logger
 
 
 class AstrumSolver(Logger, RequestClient):
-    def __init__(self, client: Client):
+    def __init__(self, client: EVMClient):
         Logger.__init__(self)
         RequestClient.__init__(self, client)
 

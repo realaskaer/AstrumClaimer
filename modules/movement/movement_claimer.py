@@ -3,12 +3,12 @@ from eth_abi import abi
 from config import MOVEMENT_ABI
 from utils.tools import helper, gas_checker
 from modules.interfaces import Logger, RequestClient, SoftwareException, SoftwareExceptionWithoutRetry
-from modules.client import Client
+from modules.evm_client import EVMClient
 from dev import Settings
 
 
 class MovementClaimer(Logger, RequestClient):
-    def __init__(self, client: Client):
+    def __init__(self, client: EVMClient):
         Logger.__init__(self)
         RequestClient.__init__(self, client)
         self.client = client

@@ -130,15 +130,15 @@ def network_handler(func):
             try:
                 return await func(self, *args, **kwargs)
             except Exception as error:
-                from modules import Client
+                from modules import EVMClient
                 msg = f'{error}'
                 k += 1
 
-                if hasattr(self, 'client') and isinstance(self.client, Client):
+                if hasattr(self, 'client') and isinstance(self.client, EVMClient):
                     client_info = self.client.acc_info
                     client_object = True
                 else:
-                    if isinstance(self, Client):
+                    if isinstance(self, EVMClient):
                         client_info = self.acc_info
                     else:
                         client_info = None, None
@@ -229,20 +229,6 @@ def helper(func):
                     await self.client.change_proxy()
                     continue
 
-                elif any(keyword in str(error) for keyword in (
-                    '502 Bad Gateway', 'Invalid proxy', 'NO_HOST_CONNECTION', 'www.cloudflare.com', 'Bad Gateway',
-                    'Bad Request'
-                )) or isinstance(error, asyncio.exceptions.IncompleteReadError):
-
-                    if 'www.cloudflare.com' in str(error):
-                        msg = f'Response came from Cloudflare server(likely IP or Server got problem), will change proxy'
-                    elif '0 bytes read' in str(error):
-                        msg = f'Probably SOCKS5 request was bad'
-
-                    self.logger_msg(*self.client.acc_info, msg=msg, type_msg='warning')
-                    await self.client.change_proxy()
-                    continue
-
                 elif 'StatusCode.UNAVAILABLE' in str(error):
                     msg = f'RPC got autism response, will try again......'
 
@@ -291,7 +277,7 @@ def helper(func):
                         '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed',
                         'connection reset by peer', 'certificate signed by unknown authority',
                         'server gave HTTP response to HTTPS client', 'EOF', 'the target machine actively refused it',
-                        'tls: handshake failure', 'tls: bad record MAC', '503 No exit node'
+                        'tls: handshake failure', 'tls: bad record MAC', '503 No exit node', 'Bad Request',
                 )):
 
                     if 'www.cloudflare.com' in msg:

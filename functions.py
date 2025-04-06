@@ -1,9 +1,11 @@
 from modules import *
+from modules.interfaces import SoftwareException
+from modules.solana_client import SolanaClient
 from utils.networks import *
 
 
-def get_client(module_input_data) -> Client:
-    return Client(module_input_data)
+def get_client(module_input_data) -> EVMClient:
+    return EVMClient(module_input_data)
 
 
 def get_rpc_by_chain_name(chain_name):
@@ -54,7 +56,7 @@ async def story_claim(module_input_data):
 
 async def story_transfer(module_input_data):
     module_input_data['network'] = StoryRPC
-    worker = StoryClaimer(Client(module_input_data))
+    worker = StoryClaimer(EVMClient(module_input_data))
     return await worker.transfer_ip()
 
 
@@ -70,9 +72,18 @@ async def movement_claim_on_ethereum(module_input_data):
 
 
 async def hyper_register_on_drop(module_input_data):
-    module_input_data['network'] = EthereumRPC
-    worker = HyperClaimer(get_client(module_input_data))
-    return await worker.register_on_drop()
+    private_key = module_input_data['evm_private_key']
+
+    if len(private_key) < 20:
+        raise SoftwareException('Please provide correct private key')
+    elif len(private_key) in [64, 66]:
+        module_input_data['network'] = EthereumRPC
+        worker = HyperClaimer(EVMClient(module_input_data))
+        return await worker.register_on_drop()
+    else:
+        module_input_data['network'] = SolanaRPC
+        worker = HyperClaimer(SolanaClient(module_input_data))
+        return await worker.register_on_drop(solana_client=True)
 
 
 async def movement_transfer_move(module_input_data):
@@ -93,5 +104,5 @@ async def unwrap_native(module_input_data):
 
 async def transfer_eth(module_input_data):
     module_input_data['network'] = EthereumRPC
-    worker = Custom(Client(module_input_data))
+    worker = Custom(EVMClient(module_input_data))
     return await worker.transfer_eth()

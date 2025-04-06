@@ -1,17 +1,21 @@
-
+import base64
 import random
+
+from nacl.signing import SigningKey
+from web3 import AsyncWeb3
 
 from config import CHAIN_IDS
 from modules.astrum_solver import AstrumSolver
+from modules.solana_client import SolanaClient
 from utils.tools import helper
 from modules.interfaces import Logger, RequestClient, SoftwareExceptionWithoutRetry, SoftwareExceptionWithProxy, \
     SoftwareException
-from modules.client import Client
+from modules.evm_client import EVMClient
 from dev import Settings
 
 
 class HyperClaimer(Logger, RequestClient):
-    def __init__(self, client: Client):
+    def __init__(self, client: EVMClient | SolanaClient):
         Logger.__init__(self)
         RequestClient.__init__(self, client)
         self.client = client
@@ -51,7 +55,7 @@ class HyperClaimer(Logger, RequestClient):
                 self.logger_msg(*self.client.acc_info, msg=f"Address found in Hyperlane database", type_msg='success')
                 eligible = response['response']['isEligible']
                 if eligible:
-                    allocation = [float(eligibility['amount']) for eligibility in response['response']['eligibilities']][0]
+                    allocation = [eligibility['amount'] for eligibility in response['response']['eligibilities']][0]
                     allocation_chain = [eligibility['network'] for eligibility in response['response']['eligibilities']][0]
                     self.logger_msg(
                         *self.client.acc_info, msg=f"Account eligible for HYPER drop, total allocation: {allocation}",
@@ -72,7 +76,7 @@ class HyperClaimer(Logger, RequestClient):
                 raise error
 
     @helper
-    async def register_on_drop(self, from_checker: bool = False):
+    async def register_on_drop(self, from_checker: bool = False, solana_client: bool = False):
         self.logger_msg(*self.client.acc_info, msg=f"Fetching allocation for HYPER registration...")
 
         if not from_checker and not Settings.HYPERLANE_TOKEN_REGISTER:
@@ -82,6 +86,9 @@ class HyperClaimer(Logger, RequestClient):
 
         if not from_checker and not Settings.HYPERLANE_NETWORKS_REGISTER:
             raise SoftwareExceptionWithoutRetry('Please provide a chain type in HYPERLANE_NETWORKS_REGISTER')
+
+        if not from_checker and not AsyncWeb3().is_address(self.client.module_input_data['evm_deposit_address']):
+            raise SoftwareExceptionWithoutRetry('Please provide Transfer address into account_data.xlsx')
 
         if not self.vercel_cookie:
             self.logger_msg(*self.client.acc_info, msg=f"Vercel challenge is not passed yet, processing...")
@@ -104,10 +111,16 @@ class HyperClaimer(Logger, RequestClient):
                 "x-vercel-challenge-version": "2",
             }
 
-            response_cookies, _ = await self.make_tls_request(
-                method="POST", url="https://claim.hyperlane.foundation/.well-known/vercel/security/request-challenge",
-                headers=headers, return_cookies=True
-            )
+            try:
+                response_cookies, _ = await self.make_tls_request(
+                    method="POST", url="https://claim.hyperlane.foundation/.well-known/vercel/security/request-challenge",
+                    headers=headers, return_cookies=True
+                )
+            except Exception as error:
+                if 'Bad Request' in str(error):
+                    raise SoftwareExceptionWithProxy('Probably your proxy is dead, will chain it')
+                else:
+                    raise error
 
             if response_cookies.get('_vcrcs'):
                 vcrcs = response_cookies.get("_vcrcs")
@@ -123,83 +136,88 @@ class HyperClaimer(Logger, RequestClient):
             return allocation, allocation_chain
 
         chain_type = random.choice(Settings.HYPERLANE_NETWORKS_REGISTER)
-
-        self.logger_msg(*self.client.acc_info, msg=f'Claim network name: {chain_type}', type_msg='success')
-
         chain_id = CHAIN_IDS[chain_type]
 
-        receiving_address = self.client.address
-        settings_address = random.choice(Settings.HYPERLANE_RECEIVE_ADDRESS)
-        if settings_address:
-            self.logger_msg(
-                *self.client.acc_info,
-                msg=f"Receiving address for $HYPER drop found: {settings_address}", type_msg='success'
-            )
-            receiving_address = settings_address
+        receiving_address = AsyncWeb3().to_checksum_address(self.client.module_input_data['evm_deposit_address'])
+        self.logger_msg(
+            *self.client.acc_info,
+            msg=f"Receiving address for $HYPER drop found: {receiving_address}. Claim network name: {chain_type}",
+            type_msg='success'
+        )
 
-        typed_data = {
-            "domain": {
-                "name": "Hyperlane",
-                "version": "1"
-            },
-            "message": {
-                "eligibleAddress": self.client.address,
-                "chainId": chain_id,
-                "amount": f"{round(allocation, 6)}",
-                "receivingAddress": receiving_address,
-                "tokenType": token_type
-            },
-            "primaryType": "Message",
-            "types": {
-                "EIP712Domain": [
-                    {
-                        "name": "name",
-                        "type": "string"
-                    },
-                    {
-                        "name": "version",
-                        "type": "string"
-                    }
-                ],
-                "Message": [
-                    {
-                        "name": "eligibleAddress",
-                        "type": "string"
-                    },
-                    {
-                        "name": "chainId",
-                        "type": "uint256"
-                    },
-                    {
-                        "name": "amount",
-                        "type": "string"
-                    },
-                    {
-                        "name": "receivingAddress",
-                        "type": "string"
-                    },
-                    {
-                        "name": "tokenType",
-                        "type": "string"
-                    }
-                ]
+        if solana_client:
+            msg_to_sign = f'{self.client.address} selects {receiving_address} ({chain_id}) to receive {allocation} {token_type}'
+
+            signing_key = SigningKey(self.client.wallet.secret())
+            signed = signing_key.sign(msg_to_sign.encode())
+            signature = base64.b64encode(signed.signature).decode('utf-8')
+
+        else:
+            typed_data = {
+                "domain": {
+                    "name": "Hyperlane",
+                    "version": "1"
+                },
+                "message": {
+                    "eligibleAddress": self.client.address,
+                    "chainId": chain_id,
+                    "amount": f"{round(allocation, 6)}",
+                    "receivingAddress": receiving_address,
+                    "tokenType": token_type
+                },
+                "primaryType": "Message",
+                "types": {
+                    "EIP712Domain": [
+                        {
+                            "name": "name",
+                            "type": "string"
+                        },
+                        {
+                            "name": "version",
+                            "type": "string"
+                        }
+                    ],
+                    "Message": [
+                        {
+                            "name": "eligibleAddress",
+                            "type": "string"
+                        },
+                        {
+                            "name": "chainId",
+                            "type": "uint256"
+                        },
+                        {
+                            "name": "amount",
+                            "type": "string"
+                        },
+                        {
+                            "name": "receivingAddress",
+                            "type": "string"
+                        },
+                        {
+                            "name": "tokenType",
+                            "type": "string"
+                        }
+                    ]
+                }
             }
-        }
 
-        signature = self.client.w3.eth.account.sign_typed_data(
-            private_key=self.client.private_key, full_message=typed_data
-        ).signature
+            signature = self.client.w3.eth.account.sign_typed_data(
+                private_key=self.client.private_key, full_message=typed_data
+            ).signature
+
+            signature = self.client.w3.to_hex(signature)
 
         self.headers['referer'] = 'https://claim.hyperlane.foundation/airdrop-registration'
 
         json_data = {
             'wallets': [
                 {
-                    'eligibleAddress': self.client.address,
+                    'eligibleAddress': f"{self.client.address}",
                     'chainId': chain_id,
                     'eligibleAddressType': allocation_chain.lower(),
                     'receivingAddress': receiving_address,
-                    'signature': f"{self.client.w3.to_hex(signature)}",
+                    'signature': f"{signature}",
                     'tokenType': token_type,
                     'amount': f'{allocation}',
                 },

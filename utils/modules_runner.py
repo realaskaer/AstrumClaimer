@@ -215,6 +215,7 @@ class Runner(Logger):
         message_list, result_list, module_counter = [], [], 0
         try:
             evm_private_key = ACCOUNTS_DATA['accounts'][account_name]['evm_private_key']
+            evm_deposit_address = ACCOUNTS_DATA['accounts'][account_name]['evm_deposit_address']
             proxy = ACCOUNTS_DATA['accounts'][account_name]['proxy']
             current_step, route_data = self.get_current_progress_for_account(account_name)
             route_list_info = [[*i.split(":")] for i in route_data]
@@ -239,6 +240,7 @@ class Runner(Logger):
                 module_input_data = {
                     "account_name": account_name,
                     "evm_private_key": evm_private_key,
+                    "evm_deposit_address": evm_deposit_address,
                     "network": network,
                     "proxy": proxy
                 }

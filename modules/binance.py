@@ -4,14 +4,14 @@ import time
 
 from hashlib import sha256
 
-from .client import Client
+from .evm_client import EVMClient
 from .interfaces import SoftwareExceptionWithoutRetry, InsufficientBalanceException, CEX, Logger
 from utils.tools import helper
 from config import BINANCE_NETWORKS_NAME, CEX_WRAPPED_ID
 
 
 class Binance(CEX, Logger):
-    def __init__(self, client: Client):
+    def __init__(self, client: EVMClient):
         self.client = client
         Logger.__init__(self)
         CEX.__init__(self, client, 'Binance')
