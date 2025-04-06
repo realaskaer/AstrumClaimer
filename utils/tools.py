@@ -226,7 +226,8 @@ def helper(func):
                     continue
 
                 elif any(keyword in str(error) for keyword in (
-                        '502 Bad Gateway', 'Invalid proxy', 'NO_HOST_CONNECTION', 'www.cloudflare.com', 'Bad Gateway'
+                    '502 Bad Gateway', 'Invalid proxy', 'NO_HOST_CONNECTION', 'www.cloudflare.com', 'Bad Gateway',
+                    'Bad Request'
                 )) or isinstance(error, asyncio.exceptions.IncompleteReadError):
 
                     if 'www.cloudflare.com' in str(error):

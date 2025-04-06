@@ -212,7 +212,10 @@ class HyperClaimer(Logger, RequestClient):
         )
 
         if response.get('validationResult') and response['validationResult'].get('success'):
-            self.logger_msg(*self.client.acc_info, msg=f"Registration was successful", type_msg='success')
+            self.logger_msg(
+                *self.client.acc_info, msg=f"Registration {token_type} in {chain_type} was successful",
+                type_msg='success'
+            )
 
             return True
 
