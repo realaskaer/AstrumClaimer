@@ -123,6 +123,9 @@ class HyperClaimer(Logger, RequestClient):
             return allocation, allocation_chain
 
         chain_type = random.choice(Settings.HYPERLANE_NETWORKS_REGISTER)
+
+        self.logger_msg(*self.client.acc_info, msg=f'Claim network name: {chain_type}', type_msg='success')
+
         chain_id = CHAIN_IDS[chain_type]
 
         receiving_address = self.client.address
