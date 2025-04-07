@@ -38,6 +38,39 @@ class HyperClaimer(Logger, RequestClient):
 
         self.cookies = {}
 
+    async def get_account(self, receiving_address):
+        self.logger_msg(*self.client.acc_info, msg=f"Fetching registrations for {receiving_address}...")
+
+        url = f'https://claim.hyperlane.foundation/api/get-registration-for-address?address={receiving_address}'
+
+        try:
+            response = await self.make_tls_request(method='GET', url=url, headers=self.headers, cookies=self.cookies)
+        except Exception as error:
+            if 'Address not found' in str(error):
+                self.logger_msg(
+                    *self.client.acc_info,
+                    msg=f"Registrant wallet ({receiving_address[:10]}..) haven`t any registration yet, initiating...",
+                    type_msg='warning'
+                )
+                return False
+            else:
+                raise error
+
+        if response.get('message') == 'Success' and response['response']:
+            registered_wallets = response['response']
+            self.logger_msg(
+                *self.client.acc_info,
+                msg=f"Successfully fetch registered {len(registered_wallets)} wallets on {self.client.address}",
+                type_msg='success'
+            )
+
+            if any([wallet['eligibleAddress'] == f"{self.client.address}" for wallet in registered_wallets]):
+                self.logger_msg(
+                    *self.client.acc_info, msg=f"Wallet already registered to receiving tokens on {receiving_address}",
+                    type_msg='success'
+                )
+                return True
+
     async def check_drop_eligible(self, from_checker: bool = False):
 
         params = {
@@ -129,6 +162,11 @@ class HyperClaimer(Logger, RequestClient):
             self.vercel_cookie = vcrcs
             self.cookies |= {"_vcrcs": self.vercel_cookie}
 
+        receiving_address = AsyncWeb3().to_checksum_address(self.client.module_input_data['evm_deposit_address'])
+
+        if await self.get_account(receiving_address):
+            return True
+
         allocation, allocation_chain = await self.check_drop_eligible(from_checker)
 
         if from_checker:
@@ -137,7 +175,6 @@ class HyperClaimer(Logger, RequestClient):
         chain_type = random.choice(Settings.HYPERLANE_NETWORKS_REGISTER)
         chain_id = CHAIN_IDS[chain_type]
 
-        receiving_address = AsyncWeb3().to_checksum_address(self.client.module_input_data['evm_deposit_address'])
         self.logger_msg(
             *self.client.acc_info,
             msg=f"Receiving address for $HYPER drop found: {receiving_address}. Claim network name: {chain_type}",
