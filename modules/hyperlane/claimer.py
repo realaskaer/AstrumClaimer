@@ -60,7 +60,7 @@ class HyperClaimer(Logger, RequestClient):
             registered_wallets = response['response']
             self.logger_msg(
                 *self.client.acc_info,
-                msg=f"Successfully fetch registered {len(registered_wallets)} wallets on {self.client.address}",
+                msg=f"Successfully fetch registered {len(registered_wallets)} wallets on {receiving_address}",
                 type_msg='success'
             )
 
