@@ -125,46 +125,19 @@ class HyperClaimer(Logger, RequestClient):
         if not self.vercel_cookie:
             self.logger_msg(*self.client.acc_info, msg=f"Vercel challenge is not passed yet, processing...")
 
-            response = await self.make_tls_request(
-                method="GET", url="https://claim.hyperlane.foundation/", headers=self.headers, return_response_headers=True
-            )
-            secret_value = response["X-Vercel-Challenge-Token"]
-
-            vercel_solution = await AstrumSolver(self.client).solve_captcha(
+            vcrcs = await AstrumSolver(self.client).solve_captcha(
                 captcha_name='vercel',
                 data_for_solver={
-                    'challenge_token': secret_value
+                    'websiteURL': 'https://claim.hyperlane.foundation/'
                 }
             )
-
-            headers = self.headers | {
-                "x-vercel-challenge-token": secret_value,
-                "x-vercel-challenge-solution": vercel_solution,
-                "x-vercel-challenge-version": "2",
-            }
-
-            try:
-                response_cookies, _ = await self.make_tls_request(
-                    method="POST", url="https://claim.hyperlane.foundation/.well-known/vercel/security/request-challenge",
-                    headers=headers, return_cookies=True
-                )
-            except Exception as error:
-                if 'Bad Request' in str(error):
-                    raise SoftwareExceptionWithProxy('Probably your proxy is dead, will chain it')
-                else:
-                    raise error
-
-            if response_cookies.get('_vcrcs'):
-                vcrcs = response_cookies.get("_vcrcs")
-            else:
-                raise SoftwareExceptionWithProxy('Vercel challenge is not passed')
 
             self.vercel_cookie = vcrcs
             self.cookies |= {"_vcrcs": self.vercel_cookie}
 
         receiving_address = AsyncWeb3().to_checksum_address(self.client.module_input_data['evm_deposit_address'])
 
-        if await self.get_account(receiving_address):
+        if not from_checker and await self.get_account(receiving_address):
             return True
 
         allocation, allocation_chain = await self.check_drop_eligible(from_checker)

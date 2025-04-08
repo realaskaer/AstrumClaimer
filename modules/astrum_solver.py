@@ -13,13 +13,13 @@ class AstrumSolver(Logger, RequestClient):
 
         self.client = client
         self.api_key = GeneralSettings.ASTRUMSOLVER_API_KEY
-        self.create_task_url = "https://service.astrum.foundation/vercel/create_task"
-        self.get_result_url = "https://service.astrum.foundation/vercel/get_result"
+        self.create_task_url = "https://service.astrum.foundation/vercel/createTask"
+        self.get_result_url = "https://service.astrum.foundation/vercel/getTaskResult"
 
     async def solve_captcha(self, captcha_name: str, data_for_solver: dict):
 
         payload = {
-            "license": self.api_key,
+            "clientKey": self.api_key,
         }
 
         self.logger_msg(*self.client.acc_info, msg=f"Start solving {captcha_name.capitalize()} captcha")
@@ -60,7 +60,8 @@ class AstrumSolver(Logger, RequestClient):
             } | data_for_solver
 
         elif captcha_name == "vercel":
-            payload["challenge_token"] = data_for_solver['challenge_token']
+            payload["proxyURL"] = self.client.proxy_url
+            payload["websiteURL"] = data_for_solver['websiteURL']
 
         elif captcha_name == "geetest":
             website_url = data_for_solver["websiteURL"]
@@ -108,7 +109,7 @@ class AstrumSolver(Logger, RequestClient):
             try:
 
                 response = await self.make_request(
-                    method="POST", url=self.create_task_url, json=payload, module_name="AstrumSolver(Create task for captcha)"
+                    method="POST", url=self.create_task_url, json=payload, module_name="Create task for captcha"
                 )
             except Exception as error:
                 if "ERROR_KEY_DOES_NOT_EXIST" in str(error):
@@ -116,8 +117,8 @@ class AstrumSolver(Logger, RequestClient):
                 else:
                     raise error
 
-            if response.get("success"):
-                result: str = await self.get_captcha_result(response["task_id"], captcha_name)
+            if response.get("errorId") == 0:
+                result: str = await self.get_captcha_result(response["taskId"], captcha_name)
 
                 if not result:
                     self.logger_msg(*self.client.acc_info, msg=f"Will try again in 10 second", type_msg="warning")
@@ -129,13 +130,13 @@ class AstrumSolver(Logger, RequestClient):
                     return result
             else:
                 error_description = response.get("errorDescription")
-                raise SoftwareException(
-                    f"Failed to send captcha request: {error_description if error_description else response}"
-                )
+                error_code = response.get("errorCode")
+                raise SoftwareException(f"Error code: {error_code}, error text: {error_description}")
 
     async def get_captcha_result(self, task_id, captcha_type):
         payload = {
-            "task_id": task_id
+            "taskId": task_id,
+            "clientKey": self.api_key,
         }
 
         total_time = 0
@@ -143,16 +144,15 @@ class AstrumSolver(Logger, RequestClient):
         while True:
             try:
                 response = await self.make_request(
-                    method="POST", url=self.get_result_url, json=payload, module_name="AstrumSolver(Get captcha result)"
+                    method="POST", url=self.get_result_url, json=payload, module_name="Get captcha result"
                 )
 
                 if response.get("errorId"):
                     error_text = response.get("errorDescription")
-                    if not error_text:
-                        error_text = response.get("errorCode")
-                    raise SoftwareException(error_text if error_text else f"error code: {response['errorId']}")
+                    error_code = response.get("errorCode")
+                    raise SoftwareException(f"Error code: {error_code}, error text: {error_text}")
 
-                if response["status"] == "Closed" and response['success']:
+                if response["status"] == "closed":
 
                     self.logger_msg(
                         *self.client.acc_info,
@@ -183,7 +183,7 @@ class AstrumSolver(Logger, RequestClient):
                         return response["solution"]["gRecaptchaResponse"]
 
                     elif captcha_type == "vercel":
-                        return response["result"]["solution"]['solution']
+                        return response["solution"]["token"]
 
                     return recaptcha_response
 
