@@ -139,7 +139,7 @@ class TxChecker:
             }
             accounts_data.append(account_data)
 
-        batch_size = 50
+        batch_size = 10
         batches = [accounts_data[i:i + batch_size] for i in range(0, len(accounts_data), batch_size)]
 
         wallets_data = []
