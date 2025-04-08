@@ -107,6 +107,7 @@ class HyperChecker:
                 account_data = {
                     'account_name': account_name,
                     'evm_private_key': account_data['evm_private_key'],
+                    'evm_deposit_address': account_data['evm_deposit_address'],
                     'network': EthereumRPC,
                     'proxy': account_data['proxy'],
                 }
