@@ -122,18 +122,18 @@ class HyperClaimer(Logger, RequestClient):
         if not from_checker and not AsyncWeb3().is_address(self.client.module_input_data['evm_deposit_address']):
             raise SoftwareExceptionWithoutRetry('Please provide Transfer address into account_data.xlsx')
 
-        # if not self.vercel_cookie:
-        #     self.logger_msg(*self.client.acc_info, msg=f"Vercel challenge is not passed yet, processing...")
-        #
-        #     vcrcs = await AstrumSolver(self.client).solve_captcha(
-        #         captcha_name='vercel',
-        #         data_for_solver={
-        #             'websiteURL': 'https://claim.hyperlane.foundation/'
-        #         }
-        #     )
-        #
-        #     self.vercel_cookie = vcrcs
-        #     self.cookies |= {"_vcrcs": self.vercel_cookie}
+        if not self.vercel_cookie:
+            self.logger_msg(*self.client.acc_info, msg=f"Vercel challenge is not passed yet, processing...")
+
+            vcrcs = await AstrumSolver(self.client).solve_captcha(
+                captcha_name='vercel',
+                data_for_solver={
+                    'websiteURL': 'https://claim.hyperlane.foundation/'
+                }
+            )
+
+            self.vercel_cookie = vcrcs
+            self.cookies |= {"_vcrcs": self.vercel_cookie}
 
         receiving_address = AsyncWeb3().to_checksum_address(self.client.module_input_data['evm_deposit_address'])
 
