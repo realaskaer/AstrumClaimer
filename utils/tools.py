@@ -278,6 +278,7 @@ def helper(func):
                         'connection reset by peer', 'certificate signed by unknown authority',
                         'server gave HTTP response to HTTPS client', 'EOF', 'the target machine actively refused it',
                         'tls: handshake failure', 'tls: bad record MAC', '503 No exit node', 'Bad Request',
+                        'Proxy connection timed out'
                 )):
 
                     if 'www.cloudflare.com' in msg:
