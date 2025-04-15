@@ -125,16 +125,25 @@ class HyperClaimer(Logger, RequestClient):
         if not self.vercel_cookie:
             self.logger_msg(*self.client.acc_info, msg=f"Vercel challenge is not passed yet, processing...")
 
-            vcrcs = await AstrumSolver(self.client).solve_captcha(
-                captcha_name='vercel',
-                data_for_solver={
-                    'websiteURL': 'https://claim.hyperlane.foundation/'
-                }
-            )
+            try:
+                vcrcs = await AstrumSolver(self.client).solve_captcha(
+                    captcha_name='vercel',
+                    data_for_solver={
+                        'websiteURL': 'https://claim.hyperlane.foundation/'
+                    }
+                )
 
-            self.vercel_cookie = vcrcs
-            self.cookies |= {"_vcrcs": self.vercel_cookie}
-
+                self.vercel_cookie = vcrcs
+                self.cookies |= {"_vcrcs": self.vercel_cookie}
+            except Exception as error:
+                if 'OVERLOAD' in str(error):
+                    self.logger_msg(
+                        *self.client.acc_info, msg=f"Solver serves is overload, please try again in 2-3 min", type_msg='warning'
+                    )
+                    await self.client.smart_sleep([120, 180], without_setting=True)
+                    raise SoftwareException('Exception for retry...')
+                else:
+                    raise error
         receiving_address = AsyncWeb3().to_checksum_address(self.client.module_input_data['evm_deposit_address'])
 
         if not from_checker and await self.get_account(receiving_address):
