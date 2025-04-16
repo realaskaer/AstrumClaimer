@@ -1,4 +1,4 @@
-import asyncio
+эimport asyncio
 
 from dev import GeneralSettings
 from modules.evm_client import EVMClient
@@ -13,8 +13,8 @@ class AstrumSolver(Logger, RequestClient):
 
         self.client = client
         self.api_key = GeneralSettings.ASTRUMSOLVER_API_KEY
-        self.create_task_url = "https://service.astrum.foundation/vercel/createTask"
-        self.get_result_url = "https://service.astrum.foundation/vercel/getTaskResult"
+        self.create_task_url = "https://solver.astrum.foundation/vercel/createTask"
+        self.get_result_url = "https://solver.astrum.foundation/vercel/getTaskResult"
 
     async def solve_captcha(self, captcha_name: str, data_for_solver: dict):
 
