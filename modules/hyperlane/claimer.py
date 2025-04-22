@@ -492,6 +492,11 @@ class HyperClaimer(Logger, RequestClient):
         if balance == 0:
             return False
 
+        if client.network.name in ['Base', 'Optimism']:
+            raise SoftwareExceptionWithoutRetry(
+                f'Slippage in {client.network.name} chain is too high, please bridge into BNB Chain first'
+            )
+
         hyper_address = {
             'Arbitrum': '0xC9d23ED2ADB0f551369946BD377f8644cE1ca5c4',
             'BNB Chain': '0xC9d23ED2ADB0f551369946BD377f8644cE1ca5c4',
