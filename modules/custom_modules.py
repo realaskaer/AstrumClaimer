@@ -91,48 +91,26 @@ class Custom(Logger, RequestClient):
         return await self.client.send_transaction(transaction)
 
     @network_handler
-    async def balance_searcher(
-            self, chains, tokens: tuple | list = None, native_check: bool = False, silent_mode: bool = False,
-            balancer_mode: bool = False, random_mode: bool = False, wrapped_tokens: bool = False,
-            need_token_name: bool = False, raise_handle: bool = False, without_error: bool = False
-    ):
-        index = 0
+    async def balance_searcher(self, chains, tokens=None, need_token_name: bool = False, raise_handle: bool = False):
         clients = [self.client.new_client(chain) for chain in chains]
-
-        if native_check:
-            tokens = [client.token for client in clients]
-        elif wrapped_tokens:
-            tokens = [f'W{client.token}' for client in clients]
-
         balances = []
         for client, token in zip(clients, tokens):
-            balances.append(await client.get_token_balance(
-                token_name=token,
-                without_error=without_error
-            ) if token in TOKENS_PER_CHAIN[client.network.name] or token in [f'W{client.token}',
-                                                                             client.token] else (0, 0, ''))
+            balances.append(await client.get_token_balance(token_name=token))
 
         flag = all(balance_in_wei == 0 for balance_in_wei, _, _ in balances)
 
         if raise_handle and flag:
-            raise SoftwareExceptionHandled('Insufficient balances in all networks!')
-
-        if flag and not balancer_mode:
-            raise SoftwareException('Insufficient balances in all networks!')
+            random_client = random.choice(clients)
+            # self.logger_msg(
+            #     *self.client.acc_info,
+            #     msg=f"Insufficient balance in all chains, will choose {random_client.network.name}",
+            #     type_msg='warning'
+            # )
+            return random_client, 0, 0, 0, 0
 
         balances_in_usd = []
-        token_prices = {}
         for balance_in_wei, balance, token_name in balances:
             token_price = 1
-            if 'USD' != token_name:
-                if token_name not in token_prices:
-                    if token_name != '':
-                        token_price = 1 #await self.get_token_price(token_name)
-                    else:
-                        token_price = 0
-                    token_prices[token_name] = token_price
-                else:
-                    token_price = token_prices[token_name]
             balance_in_usd = balance * token_price
 
             if need_token_name:
@@ -140,23 +118,13 @@ class Custom(Logger, RequestClient):
             else:
                 balances_in_usd.append([balance_in_usd, token_price])
 
-        if not random_mode:
-            index = balances_in_usd.index(max(balances_in_usd, key=lambda x: x[0]))
-        else:
-            try:
-                index = balances_in_usd.index(random.choice(
-                    [balance for balance in balances_in_usd if balance[0] > 0.2]
-                ))
-            except Exception as error:
-                if 'list index out of range' in str(error):
-                    raise SoftwareExceptionWithoutRetry('All networks have lower 0.2$ of native')
+        index = balances_in_usd.index(max(balances_in_usd, key=lambda x: x[0]))
 
-        if not silent_mode:
-            clients[index].logger_msg(
-                *clients[index].acc_info,
-                msg=f"Detected {round(balances[index][1], 5)} {tokens[index]} in {clients[index].network.name}",
-                type_msg='success'
-            )
+        clients[index].logger_msg(
+            *clients[index].acc_info,
+            msg=f"Detected {round(balances[index][1], 5)} {tokens[index]} in {clients[index].network.name}",
+            type_msg='success'
+        )
 
         return clients[index], index, balances[index][1], balances[index][0], balances_in_usd[index]
 
@@ -164,10 +132,10 @@ class Custom(Logger, RequestClient):
     async def smart_cex_withdraw(self, dapp_id: int):
         while True:
             try:
-                from functions import Binance
+                from modules import Binance, OKX
 
                 cex_class, withdraw_data = {
-                    # 1: (okx_withdraw_util, Settings.OKX_WITHDRAW_DATA),
+                    1: (OKX, Settings.OKX_WITHDRAW_DATA),
                     # 2: (bingx_withdraw_util, Settings.BINGX_WITHDRAW_DATA),
                     3: (Binance, Settings.BINANCE_WITHDRAW_DATA),
                     # 4: (bitget_withdraw_util, Settings.BITGET_WITHDRAW_DATA)

@@ -125,6 +125,10 @@ class CEX(ABC):
         if class_name == 'Binance':
             self.api_key = GeneralSettings.BINANCE_API_KEY
             self.api_secret = GeneralSettings.BINANCE_API_SECRET
+        elif class_name == 'OKX':
+            self.api_key = GeneralSettings.OKX_API_KEY
+            self.api_secret = GeneralSettings.OKX_API_SECRET
+            self.passphras = GeneralSettings.OKX_API_PASSPHRAS
         else:
             raise SoftwareException('CEX don`t available now')
 

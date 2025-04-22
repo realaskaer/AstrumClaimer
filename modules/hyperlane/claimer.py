@@ -5,6 +5,7 @@ from nacl.signing import SigningKey
 from web3 import AsyncWeb3
 
 from config import CHAIN_IDS, TOTAL_USER_AGENT, HYPERLANE_ABI, CHAIN_NAME_FROM_ID
+from modules import Custom
 from modules.astrum_solver import AstrumSolver
 from modules.solana_client import SolanaClient
 from utils.tools import helper
@@ -44,7 +45,9 @@ class HyperClaimer(Logger, RequestClient):
         url = f'https://claim.hyperlane.foundation/api/get-registration-for-address?address={receiving_address}'
 
         try:
-            response = await self.make_tls_request(method='GET', url=url, headers=self.headers, cookies=self.cookies)
+            response = await self.make_tls_request(
+                method='GET', url=url, headers=self.headers, cookies=self.cookies, rate_limit_sleep=0
+            )
         except Exception as error:
             if 'Address not found' in str(error):
                 self.logger_msg(
@@ -79,7 +82,7 @@ class HyperClaimer(Logger, RequestClient):
 
         response = await self.make_tls_request(
             url='https://claim.hyperlane.foundation/api/check-eligibility', params=params, headers=self.headers,
-            cookies=self.cookies
+            cookies=self.cookies, rate_limit_sleep=0
         )
 
         try:
@@ -93,7 +96,13 @@ class HyperClaimer(Logger, RequestClient):
                         *self.client.acc_info, msg=f"Account eligible for HYPER drop, total allocation: {allocation}",
                         type_msg='success'
                     )
-                    return allocation, allocation_chain
+
+                    client, _, balance, balance_in_wei, _ = await Custom(self.client).balance_searcher(
+                        chains=['Arbitrum', 'Optimism', 'BNB Chain', 'Ethereum', 'Base'],
+                        tokens=['HYPER', 'HYPER', 'HYPER', 'HYPER', 'HYPER'], raise_handle=True
+                    )
+
+                    return allocation, allocation_chain, balance
                 else:
                     raise SoftwareExceptionWithoutRetry('Account don`t eligible for HYPER drop')
             else:
@@ -137,13 +146,19 @@ class HyperClaimer(Logger, RequestClient):
 
         receiving_address = AsyncWeb3().to_checksum_address(self.client.module_input_data['evm_deposit_address'])
 
-        if not from_checker and await self.get_account(receiving_address):
-            return True
+        try:
+            if not from_checker and await self.get_account(receiving_address):
+                return True
 
-        allocation, allocation_chain = await self.check_drop_eligible(from_checker)
+            allocation, allocation_chain, hyper_balance = await self.check_drop_eligible(from_checker)
 
-        if from_checker:
-            return allocation, allocation_chain
+            if from_checker:
+                return allocation, allocation_chain, hyper_balance
+        except Exception as error:
+            if '<!DOCTYPE html>' in str(error):
+                raise SoftwareExceptionWithProxy('Probably bad Vercel solution')
+            else:
+                raise error
 
         chain_type = random.choice(Settings.HYPERLANE_NETWORKS_REGISTER)
         chain_id = CHAIN_IDS[chain_type]
@@ -440,10 +455,22 @@ class HyperClaimer(Logger, RequestClient):
                 if '0x646cf558' in str(error):
                     self.logger_msg(*self.client.acc_info, msg=f'You already claim $HYPER', type_msg='success')
                     return True
-                # elif 'gas required exceeds' in str(error):
-                #     from modules.custom_modules import Custom
-                #     await Custom(self.client).smart_cex_withdraw(dapp_id=3)
-                    # raise SoftwareException('Exception for retry...')
+                elif 'gas required exceeds' in str(error) or 'insufficient funds' in str(error):
+                    from modules.custom_modules import Custom
+
+                    cex_chain_id = {
+                        'Arbitrum': 2,
+                        'Optimism': 3,
+                        'Base': 6,
+                        'BNB Chain': 8,
+                    }[chain_name]
+
+                    Settings.OKX_WITHDRAW_DATA = [
+                        [cex_chain_id, (0.0002, 0.0003)],
+                    ]
+
+                    await Custom(self.client).smart_cex_withdraw(dapp_id=Settings.HYPERLANE_CEX_USE)
+                    raise SoftwareException('Exception for retry...')
                 else:
                     raise error
 
@@ -474,3 +501,20 @@ class HyperClaimer(Logger, RequestClient):
         }[client.network.name]
 
         return await ODOS(client).swap(swap_data=[hyper_address, '0x0000000000000000000000000000000000000000', balance, balance_in_wei])
+
+    @helper
+    async def bridge_hyper_to_bsc(self):
+        from modules.custom_modules import Custom
+        from modules.hyperlane.usenexus import UseNexus
+
+        self.logger_msg(*self.client.acc_info, msg=f"Fetching balance for HYPER in all possible chains")
+
+        client, _, balance, balance_in_wei, _ = await Custom(self.client).balance_searcher(
+            chains=['Arbitrum', 'Optimism', 'BNB Chain', 'Ethereum', 'Base'],
+            tokens=['HYPER', 'HYPER', 'HYPER', 'HYPER', 'HYPER'], raise_handle=True
+        )
+
+        if balance == 0:
+            return False
+
+        return await UseNexus(client).bridge(bridge_data=[client.network.name, balance, balance_in_wei])

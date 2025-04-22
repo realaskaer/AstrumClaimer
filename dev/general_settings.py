@@ -69,3 +69,7 @@ class GeneralSettings:
     TG_ID = None
     NEEDED_WALLETS_CHECKER = None
     ASTRUMSOLVER_API_KEY = None
+    OKX_API_KEY = None
+    OKX_API_SECRET = None
+    OKX_API_PASSPHRAS = None
+    OKX_EU_TYPE = None

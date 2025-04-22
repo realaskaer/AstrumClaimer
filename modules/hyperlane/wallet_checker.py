@@ -39,7 +39,7 @@ class HyperChecker:
         while True:
             try:
 
-                allocation, allocation_chain = await HyperClaimer(client).register_on_drop(
+                allocation, allocation_chain, hyper_balance = await HyperClaimer(client).register_on_drop(
                     from_checker=True, solana_client=solana_client
                 )
 
@@ -49,6 +49,7 @@ class HyperChecker:
                     "Address": client.address,
                     "Allocation": allocation,
                     "Reward Chain": allocation_chain.capitalize(),
+                    "HYPER Balance": hyper_balance,
                 }
 
                 return account_stats
@@ -62,6 +63,7 @@ class HyperChecker:
                         "Address": client.address,
                         "Allocation": "ERROR",
                         "Reward Chain": "ERROR",
+                        "HYPER Balance": "ERROR",
                     }
 
     async def check_progress(self):
@@ -72,7 +74,8 @@ class HyperChecker:
             "Account Name",
             "Address",
             "Allocation",
-            "Reward Chain"
+            "Reward Chain",
+            "HYPER Balance"
         ]
 
         table = PrettyTable()
@@ -153,6 +156,11 @@ class HyperChecker:
                     if row[field]:
                         colored_row_data.append(colored(row[field], "light_green"))
                         total_hyper += float(row[field])
+                    else:
+                        colored_row_data.append(colored(row[field], "light_grey"))
+                elif field in ['HYPER Balance']:
+                    if row[field]:
+                        colored_row_data.append(colored(row[field], "light_green"))
                     else:
                         colored_row_data.append(colored(row[field], "light_grey"))
                 else:
