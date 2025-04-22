@@ -68,6 +68,12 @@ ASTRUMSOLVER_API_KEY = ''
 BINANCE_API_KEY = ""
 BINANCE_API_SECRET = ""
 
+# OKX API KEYS https://www.okx.com/ru/account/my-api
+OKX_API_KEY = ""
+OKX_API_SECRET = ""
+OKX_API_PASSPHRAS = ""
+OKX_EU_TYPE = False  # включите это, если депозиты приходят на Трейдинг аккаунт, вместо Спотового аккаунта
+
 # EXCEL INFO
 EXCEL_PASSWORD = False
 EXCEL_PAGE_NAME = "EVM"
