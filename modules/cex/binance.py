@@ -4,8 +4,8 @@ import time
 
 from hashlib import sha256
 
-from .evm_client import EVMClient
-from .interfaces import SoftwareExceptionWithoutRetry, InsufficientBalanceException, CEX, Logger
+from modules.evm_client import EVMClient
+from modules.interfaces import SoftwareExceptionWithoutRetry, InsufficientBalanceException, CEX, Logger
 from utils.tools import helper
 from config import BINANCE_NETWORKS_NAME, CEX_WRAPPED_ID
 

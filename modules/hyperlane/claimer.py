@@ -564,13 +564,13 @@ class HyperClaimer(Logger, RequestClient):
                     'Optimism': 3,
                     'Base': 6,
                     'BNB Chain': 8,
-                }[self.client.network.name]
+                }[client.network.name]
 
                 Settings.OKX_WITHDRAW_DATA = [
-                    [cex_chain_id, (0.0002, 0.0003)],
+                    [cex_chain_id, (0.0001, 0.0002)],
                 ]
 
-                await Custom(self.client).smart_cex_withdraw(dapp_id=Settings.HYPERLANE_CEX_USE)
+                await Custom(client).smart_cex_withdraw(dapp_id=Settings.HYPERLANE_CEX_USE)
                 raise SoftwareException('Exception for retry...')
             else:
                 raise error
