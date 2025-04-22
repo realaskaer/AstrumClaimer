@@ -514,6 +514,10 @@ class HyperClaimer(Logger, RequestClient):
             tokens=['HYPER', 'HYPER', 'HYPER', 'HYPER', 'HYPER'], raise_handle=True
         )
 
+        if client.network.name == 'BNB Chain':
+            self.logger_msg(*self.client.acc_info, msg=f"HYPER already in BNB Chain", type_msg='success')
+            return True
+
         if balance == 0:
             return False
 
