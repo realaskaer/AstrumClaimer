@@ -284,11 +284,11 @@ def helper(func):
                     '[SSL: WRONG_VERSION_NUMBER] wrong version number', 'no such host',
                     '417 Expectation Failed', '407 Proxy Authentication Required',
                     '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed',
-                    'connection reset by peer', 'certificate signed by unknown authority',
+                    'reset by peer', 'certificate signed by unknown authority',
                     'server gave HTTP response to HTTPS client', 'EOF', 'the target machine actively refused it',
                     'tls: handshake failure', 'tls: bad record MAC', '503 No exit node', 'Bad Request',
                     'Proxy connection timed out', '502 NO_HOST_CONNECTION', 'failed to do request:',
-                    '503 Service Unavailable'
+                    '503 Service Unavailable',
                 )):
 
                     if 'www.cloudflare.com' in msg:
