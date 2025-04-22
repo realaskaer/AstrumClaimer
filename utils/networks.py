@@ -59,7 +59,7 @@ ScrollRPC = Network(
 ArbitrumRPC = Network(
     name='Arbitrum',
     rpc=[
-        'https://arbitrum.llamarpc.com',
+        'https://arb1.arbitrum.io/rpc',
     ],
     chain_id=42161,
     eip1559_support=False,

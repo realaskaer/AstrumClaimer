@@ -121,7 +121,7 @@ class AstrumSolver(Logger, RequestClient):
                 result: str = await self.get_captcha_result(response["taskId"], captcha_name)
 
                 if not result:
-                    raise SoftwareExceptionWithoutRetry("Can not create captcha task")
+                    raise SoftwareException("Bad captcha solution, please try again")
                 else:
                     return result
             else:

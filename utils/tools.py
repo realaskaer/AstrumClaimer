@@ -267,7 +267,7 @@ def helper(func):
                     if 'insufficient funds' not in str(error):
                         self.logger_msg(
                             self.client.account_name,
-                            None, msg=f'Maybe problem with node: {self.client.rpc_url}', type_msg='warning'
+                            None, msg=f'Maybe problem with node: {self.client.rpc}', type_msg='warning'
                         )
                         await self.client.change_rpc()
 

@@ -86,6 +86,12 @@ async def hyper_register_on_drop(module_input_data):
         return await worker.register_on_drop(solana_client=True)
 
 
+async def hyperlane_claim_drop(module_input_data):
+    module_input_data['network'] = EthereumRPC
+    worker = HyperClaimer(get_client(module_input_data))
+    return await worker.claim_hyper()
+
+
 async def movement_transfer_move(module_input_data):
     module_input_data['network'] = EthereumRPC
     worker = MovementClaimer(get_client(module_input_data))

@@ -4,7 +4,7 @@ import random
 from nacl.signing import SigningKey
 from web3 import AsyncWeb3
 
-from config import CHAIN_IDS
+from config import CHAIN_IDS, TOTAL_USER_AGENT, HYPERLANE_ABI, CHAIN_NAME_FROM_ID
 from modules.astrum_solver import AstrumSolver
 from modules.solana_client import SolanaClient
 from utils.tools import helper
@@ -247,3 +247,102 @@ class HyperClaimer(Logger, RequestClient):
             return True
 
         raise SoftwareException(f'Bad response from HYPER API, response: {response}')
+
+    @helper
+    async def claim_hyper(self):
+        self.logger_msg(*self.client.acc_info, msg=f"Fetching allocation for claim $HYPER...")
+
+        if not self.vercel_cookie:
+            self.logger_msg(*self.client.acc_info, msg=f"Vercel challenge is not passed yet, processing...")
+
+            vcrcs = await AstrumSolver(self.client).solve_captcha(
+                captcha_name='vercel',
+                data_for_solver={
+                    'websiteURL': 'https://claim.hyperlane.foundation/'
+                }
+            )
+
+            self.vercel_cookie = vcrcs
+            self.cookies |= {"_vcrcs": self.vercel_cookie}
+
+        headers = {
+            'authority': 'claim.hyperlane.foundation',
+            'accept': '*/*',
+            'accept-language': 'pl',
+            'referer': 'https://claim.hyperlane.foundation/',
+            'sec-ch-ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-origin',
+            'user-agent': TOTAL_USER_AGENT
+        }
+
+        params = {
+            'address': self.client.address,
+        }
+
+        response = await self.make_tls_request(
+            method='GET', url='https://claim.hyperlane.foundation/api/claims', params=params, cookies=self.cookies,
+            headers=headers
+        )
+
+        if response.get('message') == 'Claims found':
+            merkle_proof = response['response']['claims'][0]['merkle']['proof']
+            merkle_index = response['response']['claims'][0]['merkle']['index']
+            amount_to_claim = self.client.w3.to_int(hexstr=response['response']['claims'][0]['merkle']['amount'])
+            amount = round(amount_to_claim / 10 ** 18, 2)
+            network_to_claim = response['response']['claims'][0]['chainId']
+
+            chain_name = CHAIN_NAME_FROM_ID[network_to_claim]
+            contract_address = {
+                "ETHEREUM": "0xE5d5e5891a11b3948d84307af7651D684b87e730",
+                "BASE": "0x3D115377ec8E55A5c18ad620102286ECD068a36c",
+                "ARBITRUM": "0x3D115377ec8E55A5c18ad620102286ECD068a36c",
+                "OPTIMISM": "0x93A2Db22B7c736B341C32Ff666307F4a9ED910F5",
+                "BSC": "0xa7D7422cf603E40854D26aF151043e73c1201563"
+            }[chain_name.upper()]
+
+            claim_client = self.client.new_client(chain_name)
+
+            self.logger_msg(
+                *self.client.acc_info,
+                msg=f"Successfully found address for claiming {amount} HYPER in {chain_name} chain",
+                type_msg='success'
+            )
+
+            claim_contract = claim_client.get_contract(contract_address=contract_address, abi=HYPERLANE_ABI)
+
+            transaction = await claim_contract.functions.claim(
+                merkle_index,
+                claim_client.address,
+                amount_to_claim,
+                merkle_proof
+            ).build_transaction(await claim_client.prepare_transaction())
+
+            return await claim_client.send_transaction(transaction)
+        else:
+            raise SoftwareExceptionWithoutRetry("You not eligible or address not found in Hyperlane")
+
+    async def swap_hyper(self):
+        self.logger_msg(*self.client.acc_info, msg=f"Fetching balance for HYPER in all possible chains")
+
+        self.logger_msg(*self.client.acc_info, msg=f"Fetching allocation for HYPER registration...")
+
+        if not self.vercel_cookie:
+            self.logger_msg(*self.client.acc_info, msg=f"Vercel challenge is not passed yet, processing...")
+
+            vcrcs = await AstrumSolver(self.client).solve_captcha(
+                captcha_name='vercel',
+                data_for_solver={
+                    'websiteURL': 'https://claim.hyperlane.foundation/'
+                }
+            )
+
+            self.vercel_cookie = vcrcs
+            self.cookies |= {"_vcrcs": self.vercel_cookie}
+
+        client, chain_index, balance, _, balance_data = await self.balance_searcher(
+            chains=dapp_chains, tokens=dapp_tokens, raise_handle=True
+        )
