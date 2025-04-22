@@ -283,10 +283,16 @@ class HyperClaimer(Logger, RequestClient):
             'address': self.client.address,
         }
 
-        response = await self.make_tls_request(
-            method='GET', url='https://claim.hyperlane.foundation/api/claims', params=params, cookies=self.cookies,
-            headers=headers
-        )
+        try:
+            response = await self.make_tls_request(
+                method='GET', url='https://claim.hyperlane.foundation/api/claims', params=params, cookies=self.cookies,
+                headers=headers
+            )
+        except Exception as error:
+            if '<!DOCTYPE html><html' in str(error):
+                raise SoftwareExceptionWithProxy('Probably bad Vercel solutions')
+            else:
+                raise error
 
         if response.get('message') == 'Claims found':
             merkle_proof = response['response']['claims'][0]['merkle']['proof']
@@ -314,12 +320,19 @@ class HyperClaimer(Logger, RequestClient):
 
             claim_contract = claim_client.get_contract(contract_address=contract_address, abi=HYPERLANE_ABI)
 
-            transaction = await claim_contract.functions.claim(
-                merkle_index,
-                claim_client.address,
-                amount_to_claim,
-                merkle_proof
-            ).build_transaction(await claim_client.prepare_transaction())
+            try:
+                transaction = await claim_contract.functions.claim(
+                    merkle_index,
+                    claim_client.address,
+                    amount_to_claim,
+                    merkle_proof
+                ).build_transaction(await claim_client.prepare_transaction())
+            except Exception as error:
+                if '0x646cf558' in str(error):
+                    self.logger_msg(*self.client.acc_info, msg=f'You already claim $HYPER', type_msg='success')
+                    return True
+                else:
+                    raise error
 
             return await claim_client.send_transaction(transaction)
         else:
