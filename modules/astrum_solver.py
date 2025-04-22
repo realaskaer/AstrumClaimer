@@ -1,4 +1,4 @@
-эimport asyncio
+import asyncio
 
 from dev import GeneralSettings
 from modules.evm_client import EVMClient
@@ -121,11 +121,7 @@ class AstrumSolver(Logger, RequestClient):
                 result: str = await self.get_captcha_result(response["taskId"], captcha_name)
 
                 if not result:
-                    self.logger_msg(*self.client.acc_info, msg=f"Will try again in 10 second", type_msg="warning")
-                    await asyncio.sleep(10)
-                    counter += 1
-                    if counter > 9:
-                        raise SoftwareExceptionWithoutRetry("Can not create captcha task in 10 times")
+                    raise SoftwareExceptionWithoutRetry("Can not create captcha task")
                 else:
                     return result
             else:
@@ -150,7 +146,19 @@ class AstrumSolver(Logger, RequestClient):
                 if response.get("errorId"):
                     error_text = response.get("errorDescription")
                     error_code = response.get("errorCode")
-                    raise SoftwareException(f"Error code: {error_code}, error text: {error_text}")
+
+                    if error_code == 'OVERLOAD':
+                        self.logger_msg(
+                            *self.client.acc_info, msg=f"Solver serves is overload, please try again in 2-3 min",
+                            type_msg='warning'
+                        )
+                        await self.client.smart_sleep([120, 180], without_setting=True)
+                        raise SoftwareException('Exception for retry...')
+                    elif error_code == 'FAILED TO CONNECT PROXY':
+                        await self.client.change_proxy()
+                        raise SoftwareException('Exception for retry...')
+                    else:
+                        raise SoftwareException(f"Error code: {error_code}, error text: {error_text}")
 
                 if response["status"] == "closed":
 
