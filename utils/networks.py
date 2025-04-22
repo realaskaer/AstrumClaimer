@@ -35,7 +35,6 @@ BeraChainRPC = Network(
 EthereumRPC = Network(
     name='Ethereum',
     rpc=[
-        'https://rpc.ankr.com/eth',
         'https://eth.drpc.org'
     ],
     chain_id=1,
@@ -153,7 +152,6 @@ Polygon_ZKEVM_RPC = Network(
 BSC_RPC = Network(
     name='BNB Chain',
     rpc=[
-        'https://rpc.ankr.com/bsc',
         'https://binance.llamarpc.com',
     ],
     chain_id=56,
@@ -177,7 +175,8 @@ MantaRPC = Network(
 OptimismRPC = Network(
     name='Optimism',
     rpc=[
-        'https://optimism.llamarpc.com',
+        # 'https://optimism.llamarpc.com',
+        'https://mainnet.optimism.io',
         # 'https://optimism.drpc.org',
     ],
     chain_id=10,

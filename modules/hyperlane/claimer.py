@@ -451,24 +451,26 @@ class HyperClaimer(Logger, RequestClient):
         else:
             raise SoftwareExceptionWithoutRetry("You not eligible or address not found in Hyperlane")
 
+    @helper
     async def swap_hyper(self):
+        from modules.custom_modules import Custom
+        from modules.hyperlane.odos import ODOS
         self.logger_msg(*self.client.acc_info, msg=f"Fetching balance for HYPER in all possible chains")
 
-        self.logger_msg(*self.client.acc_info, msg=f"Fetching allocation for HYPER registration...")
-
-        if not self.vercel_cookie:
-            self.logger_msg(*self.client.acc_info, msg=f"Vercel challenge is not passed yet, processing...")
-
-            vcrcs = await AstrumSolver(self.client).solve_captcha(
-                captcha_name='vercel',
-                data_for_solver={
-                    'websiteURL': 'https://claim.hyperlane.foundation/'
-                }
-            )
-
-            self.vercel_cookie = vcrcs
-            self.cookies |= {"_vcrcs": self.vercel_cookie}
-
-        client, chain_index, balance, _, balance_data = await self.balance_searcher(
-            chains=dapp_chains, tokens=dapp_tokens, raise_handle=True
+        client, _, balance, balance_in_wei, _ = await Custom(self.client).balance_searcher(
+            chains=['Arbitrum', 'Optimism', 'BNB Chain', 'Ethereum', 'Base'],
+            tokens=['HYPER', 'HYPER', 'HYPER', 'HYPER', 'HYPER'], raise_handle=True
         )
+
+        if balance == 0:
+            return False
+
+        hyper_address = {
+            'Arbitrum': '0xC9d23ED2ADB0f551369946BD377f8644cE1ca5c4',
+            'BNB Chain': '0xC9d23ED2ADB0f551369946BD377f8644cE1ca5c4',
+            'Base': '0xC9d23ED2ADB0f551369946BD377f8644cE1ca5c4',
+            'Ethereum': '0x93A2Db22B7c736B341C32Ff666307F4a9ED910F5',
+            'Optimism': '0x9923DB8d7FBAcC2E69E87fAd19b886C81cd74979',
+        }[client.network.name]
+
+        return await ODOS(client).swap(swap_data=[hyper_address, 'ETH', balance, balance_in_wei])

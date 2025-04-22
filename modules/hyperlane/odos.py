@@ -27,7 +27,7 @@ class ODOS(RequestClient, Logger):
                     "proportion": 1
                 }
             ],
-            "slippageLimitPercent": 3,
+            "slippageLimitPercent": 10,
             "userAddr": f"{self.client.address}",
             "compact": True,
         }
