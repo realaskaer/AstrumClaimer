@@ -307,7 +307,7 @@ class HyperClaimer(Logger, RequestClient):
                 "BASE": "0x3D115377ec8E55A5c18ad620102286ECD068a36c",
                 "ARBITRUM": "0x3D115377ec8E55A5c18ad620102286ECD068a36c",
                 "OPTIMISM": "0x93A2Db22B7c736B341C32Ff666307F4a9ED910F5",
-                "BSC": "0xa7D7422cf603E40854D26aF151043e73c1201563"
+                "BNB CHAIN": "0xa7D7422cf603E40854D26aF151043e73c1201563"
             }[chain_name.upper()]
 
             claim_client = self.client.new_client(chain_name)
