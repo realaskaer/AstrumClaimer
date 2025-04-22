@@ -557,7 +557,7 @@ class HyperClaimer(Logger, RequestClient):
 
         try:
             transaction = await token_contract.functions.transfer(
-                client.address,
+                transfer_address,
                 amount_in_wei
             ).build_transaction(await client.prepare_transaction())
         except Exception as error:
