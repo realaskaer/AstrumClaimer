@@ -551,6 +551,7 @@ class HyperClaimer(Logger, RequestClient):
         #     return True
 
         if amount == 0:
+            self.logger_msg(*self.client.acc_info, msg=f"Not found HYPER balance in all networks", type_msg='warning')
             return True
 
         token_contract = client.get_contract(contract_address=TOKENS_PER_CHAIN[client.network.name]['HYPER'])
@@ -561,7 +562,7 @@ class HyperClaimer(Logger, RequestClient):
                 amount_in_wei
             ).build_transaction(await client.prepare_transaction())
         except Exception as error:
-            if 'gas required exceeds' in str(error) or 'insufficient funds' in str(error):
+            if 'gas required exceeds' in str(error) or 'insufficient funds' in str(error) or 'failed to send tx' in str(error) or 'execution reverted' in str(error):
                 from modules.custom_modules import Custom
 
                 cex_chain_id = {
