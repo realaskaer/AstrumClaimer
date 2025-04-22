@@ -248,8 +248,115 @@ class HyperClaimer(Logger, RequestClient):
 
         raise SoftwareException(f'Bad response from HYPER API, response: {response}')
 
+    @staticmethod
+    def generate_random_user_agent():
+        platforms = {
+            "Windows": [
+                ("Windows NT 10.0; Win64; x64", "Windows"),
+                ("Windows NT 11.0; Win64; x64", "Windows"),
+                ("Windows NT 10.0; WOW64", "Windows"),
+            ],
+            "Mac": [
+                ("Macintosh; Intel Mac OS X 10_15_7", "macOS"),
+                ("Macintosh; Intel Mac OS X 11_2_3", "macOS"),
+                ("Macintosh; Intel Mac OS X 12_3_1", "macOS"),
+                ("Macintosh; Intel Mac OS X 13_0", "macOS"),
+            ],
+            "Linux": [
+                ("X11; Linux x86_64", "Linux"),
+                ("X11; Ubuntu; Linux x86_64", "Linux"),
+                ("X11; Fedora; Linux x86_64", "Linux"),
+            ],
+            "iOS": [
+                ("iPhone; CPU iPhone OS 16_0 like Mac OS X", "iOS"),
+                ("iPad; CPU OS 16_0 like Mac OS X", "iOS"),
+                ("iPhone; CPU iPhone OS 15_6_1 like Mac OS X", "iOS"),
+            ],
+            "Android": [
+                ("Linux; Android 13", "Android"),
+                ("Linux; Android 12; SM-S908B", "Android"),
+                ("Linux; Android 11; Pixel 6", "Android"),
+            ]
+        }
+
+        browsers = {
+            "Chrome": {
+                "versions": ["106.0.0.0", "107.0.0.0", "108.0.0.0", "109.0.0.0", "110.0.0.0",
+                             "111.0.0.0", "112.0.0.0", "113.0.0.0", "114.0.0.0", "115.0.0.0",
+                             "116.0.0.0", "117.0.0.0", "118.0.0.0", "119.0.0.0", "120.0.0.0",
+                             "121.0.0.0", "122.0.0.0", "123.0.0.0", "124.0.0.0", "125.0.0.0",
+                             "126.0.0.0", "127.0.0.0", "128.0.0.0", "129.0.0.0", "130.0.0.0",
+                             "131.0.0.0", "132.0.0.0", "133.0.0.0", "134.0.0.0", "135.0.0.0",
+                             "136.0.0.0", "137.0.0.0"],
+                "ua_template": "Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version} Safari/537.36",
+                "sec_ch_ua": '"Google Chrome";v="{version_major}", "Not(A:Brand";v="99", "Chromium";v="{version_major}"'
+            },
+            "Edge": {
+                "versions": ["106.0.1370.47", "107.0.1418.35", "108.0.1462.54", "109.0.1518.70",
+                             "110.0.1587.57", "111.0.1661.51", "112.0.1722.48", "113.0.1774.50",
+                             "114.0.1823.51", "115.0.1901.183", "116.0.1938.54", "117.0.2045.41",
+                             "118.0.2088.46", "119.0.2151.44", "120.0.2210.77", "121.0.2277.83",
+                             "122.0.2365.59", "123.0.2420.65", "124.0.2478.55", "125.0.2535.49",
+                             "126.0.2592.57", "127.0.2653.100", "128.0.2723.44", "129.0.2793.44",
+                             "130.0.2857.82", "131.0.2929.79", "132.0.3007.99", "133.0.3135.63"],
+                "ua_template": "Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_ver} Safari/537.36 Edg/{version}",
+                "sec_ch_ua": '"Microsoft Edge";v="{version_major}", "Not(A:Brand";v="99", "Chromium";v="{chrome_major}"'
+            },
+            "Firefox": {
+                "versions": ["106.0", "107.0", "108.0", "109.0", "110.0", "111.0", "112.0",
+                             "113.0", "114.0", "115.0", "116.0", "117.0", "118.0", "119.0",
+                             "120.0", "121.0", "122.0", "123.0", "124.0", "125.0", "126.0",
+                             "127.0", "128.0", "129.0", "130.0", "131.0", "132.0", "133.0"],
+                "ua_template": "Mozilla/5.0 ({platform}; rv:{version}) Gecko/20100101 Firefox/{version}",
+                "sec_ch_ua": '"Firefox";v="{version_major}", "Not(A:Brand";v="99"'
+            },
+            "Safari": {
+                "versions": ["15.0", "15.1", "15.2", "15.3", "15.4", "15.5", "15.6",
+                             "16.0", "16.1", "16.2", "16.3", "16.4", "16.5", "16.6",
+                             "17.0", "17.1", "17.2", "17.3", "17.4", "17.5"],
+                "ua_template": "Mozilla/5.0 ({platform}) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{version} Safari/605.1.15",
+                "sec_ch_ua": '"Safari";v="{version_major}", "Not(A:Brand";v="99", "Apple WebKit";v="605"'
+            }
+        }
+
+        platform_name = random.choice(list(platforms.keys()))
+        platform_data, platform_sec_ch = random.choice(platforms[platform_name])
+
+        browser_name = "Chrome" if platform_name in ["Android"] else random.choice(list(browsers.keys()))
+        if browser_name == "Safari" and platform_name not in ["Mac", "iOS"]:
+            browser_name = "Chrome"  # Safari только на Apple устройствах
+
+        browser_data = browsers[browser_name]
+        version = random.choice(browser_data["versions"])
+        version_major = version.split('.')[0]
+
+        ua_template = browser_data["ua_template"]
+
+        if browser_name == "Edge":
+            chrome_ver = random.choice(browsers["Chrome"]["versions"])
+            chrome_major = chrome_ver.split('.')[0]
+            ua = ua_template.format(platform=platform_data, chrome_ver=chrome_ver, version=version)
+            sec_ch_ua = browser_data["sec_ch_ua"].format(version_major=version_major, chrome_major=chrome_major)
+        else:
+            ua = ua_template.format(platform=platform_data, version=version)
+            sec_ch_ua = browser_data["sec_ch_ua"].format(version_major=version_major)
+
+        is_mobile = platform_name in ["iOS", "Android"]
+        sec_ch_ua_mobile = "?1" if is_mobile else "?0"
+
+        return {
+            "user_agent": ua,
+            "sec_ch_ua": sec_ch_ua,
+            "sec_ch_ua_platform": f'"{platform_sec_ch}"',
+            "sec_ch_ua_mobile": sec_ch_ua_mobile,
+            # "is_mobile": is_mobile
+        }
+
     @helper
     async def claim_hyper(self):
+        self.cookies = {}
+        self.vercel_cookie = {}
+
         self.logger_msg(*self.client.acc_info, msg=f"Fetching allocation for claim $HYPER...")
 
         if not self.vercel_cookie:
@@ -265,19 +372,21 @@ class HyperClaimer(Logger, RequestClient):
             self.vercel_cookie = vcrcs
             self.cookies |= {"_vcrcs": self.vercel_cookie}
 
+        fingerprints = self.generate_random_user_agent()
+
         headers = {
             'authority': 'claim.hyperlane.foundation',
             'accept': '*/*',
             'accept-language': 'pl',
             'referer': 'https://claim.hyperlane.foundation/',
-            'sec-ch-ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
+            'sec-ch-ua': '"Not/A)Brand";v="8", "Chromium";v="135", "Google Chrome";v="135"',
             'sec-ch-ua-mobile': '?0',
             'sec-ch-ua-platform': '"Windows"',
             'sec-fetch-dest': 'empty',
             'sec-fetch-mode': 'cors',
             'sec-fetch-site': 'same-origin',
             'user-agent': TOTAL_USER_AGENT
-        }
+        } | fingerprints
 
         params = {
             'address': self.client.address,
@@ -286,7 +395,7 @@ class HyperClaimer(Logger, RequestClient):
         try:
             response = await self.make_tls_request(
                 method='GET', url='https://claim.hyperlane.foundation/api/claims', params=params, cookies=self.cookies,
-                headers=headers
+                headers=headers, rate_limit_sleep=0
             )
         except Exception as error:
             if '<!DOCTYPE html><html' in str(error):
@@ -331,6 +440,10 @@ class HyperClaimer(Logger, RequestClient):
                 if '0x646cf558' in str(error):
                     self.logger_msg(*self.client.acc_info, msg=f'You already claim $HYPER', type_msg='success')
                     return True
+                # elif 'gas required exceeds' in str(error):
+                #     from modules.custom_modules import Custom
+                #     await Custom(self.client).smart_cex_withdraw(dapp_id=3)
+                    # raise SoftwareException('Exception for retry...')
                 else:
                     raise error
 
