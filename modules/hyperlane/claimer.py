@@ -525,6 +525,8 @@ class HyperClaimer(Logger, RequestClient):
 
     @helper
     async def transfer_hyper(self):
+        from modules.custom_modules import Custom
+
         from config import ACCOUNTS_DATA
 
         transfer_address = ACCOUNTS_DATA['accounts'][self.client.account_name].get('evm_deposit_address')
@@ -548,10 +550,30 @@ class HyperClaimer(Logger, RequestClient):
 
         token_contract = client.get_contract(contract_address=TOKENS_PER_CHAIN[client.network.name]['HYPER'])
 
-        transaction = await token_contract.functions.transfer(
-            client.address,
-            amount_in_wei
-        ).build_transaction(await client.prepare_transaction())
+        try:
+            transaction = await token_contract.functions.transfer(
+                client.address,
+                amount_in_wei
+            ).build_transaction(await client.prepare_transaction())
+        except Exception as error:
+            if 'gas required exceeds' in str(error) or 'insufficient funds' in str(error):
+                from modules.custom_modules import Custom
+
+                cex_chain_id = {
+                    'Arbitrum': 2,
+                    'Optimism': 3,
+                    'Base': 6,
+                    'BNB Chain': 8,
+                }[self.client.network.name]
+
+                Settings.OKX_WITHDRAW_DATA = [
+                    [cex_chain_id, (0.0002, 0.0003)],
+                ]
+
+                await Custom(self.client).smart_cex_withdraw(dapp_id=Settings.HYPERLANE_CEX_USE)
+                raise SoftwareException('Exception for retry...')
+            else:
+                raise error
 
         self.logger_msg(*client.acc_info, msg=f"Transfer {amount} HYPER to {transfer_address} address")
 

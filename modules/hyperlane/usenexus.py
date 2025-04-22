@@ -4,7 +4,7 @@ from config import TOKENS_PER_CHAIN
 from config import USENEXUS_ABI
 from dev import Settings
 from modules import Logger, EVMClient
-from modules.interfaces import SoftwareException
+from modules.interfaces import SoftwareException, SoftwareExceptionWithoutRetry
 from utils.tools import helper, gas_checker
 
 
@@ -28,7 +28,25 @@ class UseNexus(Logger):
         )
 
         bridge_gas_fee = await bridge_contract.functions.quoteGasPayment(dest_chain_int).call()
-        int_address = self.client.w3.to_int(hexstr=self.client.address)
+
+        from config import ACCOUNTS_DATA
+
+        transfer_address = ACCOUNTS_DATA['accounts'][self.client.account_name].get('evm_deposit_address')
+
+        if not transfer_address:
+            if not Settings.HYPERLANE_USENEXUS_ADDRESS:
+                self.logger_msg(
+                    *self.client.acc_info,
+                    msg=f'There is no wallet listed for transfer, will use self address',
+                    type_msg='warning'
+                )
+                transfer_address = self.client.address
+            else:
+                raise SoftwareExceptionWithoutRetry(
+                    f'There is no wallet listed for transfer, please add wallet into accounts_data.xlsx'
+                )
+
+        int_address = self.client.w3.to_int(hexstr=transfer_address)
         dst_address = abi.encode(['uint256'], [int_address])
 
         try:
