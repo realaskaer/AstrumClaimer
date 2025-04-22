@@ -245,6 +245,8 @@ def helper(func):
 
                 elif 'gas required exceeds' in str(error):
                     msg = f'Not enough {self.client.network.token} for transaction gas payment'
+                    self.logger_msg(*self.client.acc_info, msg=msg, type_msg='error')
+                    return False
 
                 elif isinstance(error, SoftwareExceptionHandled):
                     self.logger_msg(*self.client.acc_info, msg=f"{error}", type_msg='warning')
