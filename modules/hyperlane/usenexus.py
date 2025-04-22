@@ -46,7 +46,7 @@ class UseNexus(Logger):
                     f'There is no wallet listed for transfer, please add wallet into accounts_data.xlsx'
                 )
 
-        int_address = self.client.w3.to_int(hexstr=transfer_address)
+        int_address = self.client.w3.to_int(hexstr=self.client.w3.to_checksum_address(transfer_address))
         dst_address = abi.encode(['uint256'], [int_address])
 
         try:
