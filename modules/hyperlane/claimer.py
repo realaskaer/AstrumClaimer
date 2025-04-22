@@ -473,4 +473,4 @@ class HyperClaimer(Logger, RequestClient):
             'Optimism': '0x9923DB8d7FBAcC2E69E87fAd19b886C81cd74979',
         }[client.network.name]
 
-        return await ODOS(client).swap(swap_data=[hyper_address, 'ETH', balance, balance_in_wei])
+        return await ODOS(client).swap(swap_data=[hyper_address, '0x0000000000000000000000000000000000000000', balance, balance_in_wei])
