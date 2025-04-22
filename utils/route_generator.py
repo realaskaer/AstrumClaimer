@@ -21,6 +21,7 @@ AVAILABLE_MODULES_INFO = {
     hyperlane_claim_drop                : (hyperlane_claim_drop, 2, 'Claim $HYPER drop', 0, [0]),
     hyperlane_swap_hyper                : (hyperlane_swap_hyper, 2, 'Swap $HYPER -> ETH/BNB via ODOS', 0, [0]),
     hyperlane_bridge_hyper_to_bsc       : (hyperlane_bridge_hyper_to_bsc, 2, 'Bridge $HYPER to BNB Chai via UseNexus', 0, [0]),
+    hyperlane_transfer_hyper            : (hyperlane_transfer_hyper, 2, 'Transfer $HYPER to EVM Deposit Address', 0, [0]),
     movement_transfer_move              : (movement_transfer_move, 2, 'Transfer $MOVE on Ethereum Mainnet', 0, [0]),
     unwrap_native                       : (unwrap_native, 2, 'Unwrap Native', 0, [0]),
     transfer_eth                        : (transfer_eth, 3, 'Transfer $ETH', 0, [0]),

@@ -4,7 +4,7 @@ import random
 from nacl.signing import SigningKey
 from web3 import AsyncWeb3
 
-from config import CHAIN_IDS, TOTAL_USER_AGENT, HYPERLANE_ABI, CHAIN_NAME_FROM_ID
+from config import CHAIN_IDS, TOTAL_USER_AGENT, HYPERLANE_ABI, CHAIN_NAME_FROM_ID, TOKENS_PER_CHAIN
 from modules import Custom
 from modules.astrum_solver import AstrumSolver
 from modules.solana_client import SolanaClient
@@ -519,6 +519,40 @@ class HyperClaimer(Logger, RequestClient):
             return True
 
         if balance == 0:
-            return False
+            return True
 
         return await UseNexus(client).bridge(bridge_data=[client.network.name, balance, balance_in_wei])
+
+    @helper
+    async def transfer_hyper(self):
+        from config import ACCOUNTS_DATA
+
+        transfer_address = ACCOUNTS_DATA['accounts'][self.client.account_name].get('evm_deposit_address')
+
+        if not transfer_address:
+            raise SoftwareExceptionWithoutRetry(
+                f'There is no wallet listed for transfer, please add wallet into accounts_data.xlsx'
+            )
+
+        client, _, amount, amount_in_wei, _ = await Custom(self.client).balance_searcher(
+            chains=['Arbitrum', 'Optimism', 'BNB Chain', 'Ethereum', 'Base'],
+            tokens=['HYPER', 'HYPER', 'HYPER', 'HYPER', 'HYPER'], raise_handle=True
+        )
+
+        # if client.network.name == 'BNB Chain':
+        #     self.logger_msg(*self.client.acc_info, msg=f"HYPER already in BNB Chain", type_msg='success')
+        #     return True
+
+        if amount == 0:
+            return True
+
+        token_contract = client.get_contract(contract_address=TOKENS_PER_CHAIN[client.network.name]['HYPER'])
+
+        transaction = await token_contract.functions.transfer(
+            client.address,
+            amount_in_wei
+        ).build_transaction(await client.prepare_transaction())
+
+        self.logger_msg(*client.acc_info, msg=f"Transfer {amount} HYPER to {transfer_address} address")
+
+        return await client.send_transaction(transaction)

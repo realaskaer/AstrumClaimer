@@ -104,6 +104,12 @@ async def hyperlane_bridge_hyper_to_bsc(module_input_data):
     return await worker.bridge_hyper_to_bsc()
 
 
+async def hyperlane_transfer_hyper(module_input_data):
+    module_input_data['network'] = EthereumRPC
+    worker = HyperClaimer(get_client(module_input_data))
+    return await worker.transfer_hyper()
+
+
 async def movement_transfer_move(module_input_data):
     module_input_data['network'] = EthereumRPC
     worker = MovementClaimer(get_client(module_input_data))
